@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArndtAi — podgląd sesji</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="pulse" id="conn-dot" title="odczyt plików sesji"></span>
+    <span class="brand-name">ArndtAi</span>
+    <span class="brand-sub">podgląd sesji · Faza C</span>
+  </div>
+  <div class="topright">
+    <span class="conn-label" id="conn-label">łączę…</span>
+    <span class="clock" id="clock">--:--:--</span>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="sidebar" aria-label="Lista sesji">
+    <div class="panel-head">
+      <h2>Sesje</h2>
+      <span class="counter" id="session-count">0</span>
+    </div>
+    <ol class="sessions" id="session-list"></ol>
+    <div class="placeholder" id="sessions-empty">
+      <p>Brak sesji w <code>.agent/sessions</code>.</p>
+      <p class="muted">Uruchom serwer z korzenia projektu:</p>
+      <pre class="cmd">python3 -m http.server 8765</pre>
+      <p class="muted">i otwórz <code>http://127.0.0.1:8765/app/web/</code>.</p>
+    </div>
+  </aside>
+
+  <section class="viewer" aria-label="Widok sesji">
+    <div class="viewer-head">
+      <div class="viewer-title">
+        <h2 id="session-title">Wybierz sesję</h2>
+        <p class="sub" id="session-sub"></p>
+      </div>
+      <span class="badge" id="session-status">—</span>
+    </div>
+
+    <div class="controls" id="controls" hidden>
+      <div class="searchbox">
+        <input id="search" type="search" placeholder="Szukaj w sesji…" autocomplete="off" spellcheck="false" aria-label="Szukaj w sesji">
+        <button id="search-clear" class="ghost icon" type="button" title="Wyczyść szukanie" hidden>×</button>
+      </div>
+      <div class="kinds" id="kinds" role="group" aria-label="Filtr typów eventów"></div>
+      <div class="filter-actions">
+        <button id="kinds-all" class="ghost" type="button">wszystkie</button>
+        <button id="kinds-none" class="ghost" type="button">żadne</button>
+        <span class="visible" id="visible-count"></span>
+      </div>
+    </div>
+
+    <ol class="events" id="events" tabindex="0"></ol>
+    <div class="placeholder placeholder-view" id="events-empty">
+      <p>Wybierz sesję z listy po lewej.</p>
+      <p class="muted">Widok jest tylko do odczytu: pokazuje zdarzenia z pliku JSONL.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="statusbar">
+  <span class="keys">odczyt · zero zapisów · auto-odświeżanie 2 s</span>
+  <span class="counters" id="status-counters">—</span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

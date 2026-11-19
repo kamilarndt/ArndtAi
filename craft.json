@@ -9,62 +9,62 @@
   "status": "ready",
   "note": "Ready: 5 checks pass; evidence in checks/evidence.json",
   "created_ms": 1794572139328,
-  "updated_ms": 1795105810061,
+  "updated_ms": 1795105847593,
   "checks": [
     {
       "round": 1,
       "check": "build",
       "passed": true,
       "similarity": null,
-      "note": "`cargo build --quiet` w app/ -> exit 0 (78 ms, sha256 e3b0c44298fc)",
+      "note": "`cargo build --quiet` w app/ -> exit 0 (92 ms, sha256 e3b0c44298fc)",
       "artifacts": [
-        "checks/1795105807525-build.log"
+        "checks/1795105845045-build.log"
       ],
-      "at_ms": 1795105807525
+      "at_ms": 1795105845045
     },
     {
       "round": 1,
       "check": "own-tests",
       "passed": true,
       "similarity": null,
-      "note": "`cargo test --quiet` w app/ -> exit 0 (1794 ms, sha256 8038e680b2e1)",
+      "note": "`cargo test --quiet` w app/ -> exit 0 (1767 ms, sha256 6a89747932b2)",
       "artifacts": [
-        "checks/1795105807526-own-tests.log"
+        "checks/1795105845046-own-tests.log"
       ],
-      "at_ms": 1795105807526
+      "at_ms": 1795105845046
     },
     {
       "round": 1,
       "check": "demo",
       "passed": true,
       "similarity": null,
-      "note": "`cargo run --quiet -- demo` w app/ -> exit 0 (327 ms, sha256 4e0d2689aae3)",
+      "note": "`cargo run --quiet -- demo` w app/ -> exit 0 (339 ms, sha256 4e0d2689aae3)",
       "artifacts": [
-        "checks/1795105807527-demo.log"
+        "checks/1795105845047-demo.log"
       ],
-      "at_ms": 1795105807527
+      "at_ms": 1795105845047
     },
     {
       "round": 1,
       "check": "security",
       "passed": true,
       "similarity": null,
-      "note": "`cargo test --quiet tools::tests` w app/ -> exit 0 (64 ms, sha256 7b46164811fd)",
+      "note": "`cargo test --quiet tools::tests` w app/ -> exit 0 (71 ms, sha256 c73e5d0a3908)",
       "artifacts": [
-        "checks/1795105807528-security.log"
+        "checks/1795105845048-security.log"
       ],
-      "at_ms": 1795105807528
+      "at_ms": 1795105845048
     },
     {
       "round": 1,
       "check": "durability",
       "passed": true,
       "similarity": null,
-      "note": "`cargo test --quiet agent::tests` w app/ -> exit 0 (262 ms, sha256 1c506a25535d)",
+      "note": "`cargo test --quiet agent::tests` w app/ -> exit 0 (269 ms, sha256 1c506a25535d)",
       "artifacts": [
-        "checks/1795105807529-durability.log"
+        "checks/1795105845049-durability.log"
       ],
-      "at_ms": 1795105807529
+      "at_ms": 1795105845049
     },
     {
       "round": 1,

@@ -29,3 +29,6 @@ checks/*.log
 # Python bytecode z generatora fixture (app/web/)
 __pycache__/
 *.pyc
+
+# Artefakty wydania (binarka), nie historia
+dist/

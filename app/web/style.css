@@ -192,6 +192,10 @@ code, pre, .mono { font-family: var(--mono); }
   flex-direction: column;
   min-height: 0;
   min-width: 0;
+  /* Runda 20: ramki markdownu upraszczają się według szerokości panelu,
+     nie całego okna — 500 px panelu to wąski wariant, 960 px to szeroki. */
+  container-type: inline-size;
+  container-name: viewer;
 }
 
 .viewer-head {
@@ -537,6 +541,157 @@ details > summary:hover { color: var(--fg); }
 .counters b { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .ev-summary .reason { margin: 6px 0 0; color: var(--fg-soft); }
+
+/* ── markdown w treści asystenta (runda 20) ───────────────────────────── */
+/* Ten sam zakres i paleta co `app/src/markdown.rs` (runda 18): nagłówki bez
+   hashy, pogrubienie i kursywa jako atrybuty, kod inline na `bg_highlight`,
+   listy z punktorami/numerami, blok kodu w ramce z etykietą języka, cytat
+   z pionową kreską, tabela jako siatka bez zawijania kolumn.
+   Markdown obowiązuje tylko w `thought` i `summary.reason`. */
+
+.md {
+  --md-frame: #585858; /* GRAY_DIM — ramki, kreski, komentarze */
+  --md-dim: #6c6c6c; /* GRAY — tekst przygaszony */
+  --md-kw: var(--purple); /* MAGENTA — słowa kluczowe */
+  --md-str: #9ece6a; /* GREEN — stringi */
+  --md-num: var(--orange); /* ORANGE — liczby */
+  --md-bg: #242424; /* BG_LIGHT — tło kodu inline */
+  margin: 2px 0 0;
+  white-space: normal;
+}
+
+.md-line { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Pusty wiersz tylko między treścią — jeden wiersz tekstu, jak w TUI. */
+.md-blank { height: 1.45em; }
+
+.md-h { font-weight: 700; color: #ffffff; margin: 0; }
+/* TUI trzyma jeden rozmiar tekstu; w przeglądarce sama pogrubiona linia
+   gubi hierarchię, więc h1/h2 dostają minimalnie większy stopień (bez zmian
+   koloru i bez żadnych innych ozdobników). */
+.md-h1 { font-size: 1.14em; }
+.md-h2 { font-size: 1.06em; }
+.md-h4, .md-hx { color: var(--md-dim); }
+
+.md-b { font-weight: 700; color: var(--fg); }
+.md-i { font-style: italic; }
+.md-dim { color: var(--md-dim); }
+.md-link { text-decoration: underline; text-underline-offset: 2px; }
+
+.md-c {
+  padding: 0 3px;
+  border-radius: 2px;
+  background: var(--md-bg);
+  color: var(--fg);
+}
+
+.md-rule { color: var(--md-frame); letter-spacing: 0.08em; }
+
+/* ── listy ─────────────────────────────────────────────────────────────── */
+
+.md-li { white-space: pre-wrap; overflow-wrap: anywhere; }
+.md-marker { color: var(--md-dim); }
+
+/* ── cytat ─────────────────────────────────────────────────────────────── */
+
+.md-quote {
+  border-left: 2px solid var(--md-frame);
+  padding-left: 8px;
+  margin: 2px 0;
+}
+.md-q-line { color: var(--md-dim); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ── blok kodu ─────────────────────────────────────────────────────────── */
+
+.md-code {
+  position: relative;
+  margin: 7px 0 5px;
+  border: 1px solid var(--md-frame);
+  border-radius: 2px;
+}
+
+.md-code-label {
+  position: absolute;
+  top: -0.75em;
+  right: 10px;
+  padding: 0 6px;
+  background: var(--bg);
+  color: var(--md-dim);
+  font-size: 10.5px;
+  line-height: 1.4;
+  letter-spacing: 0.05em;
+}
+
+.md-code-body {
+  padding: 7px 10px 7px 9px;
+  overflow-x: auto;
+}
+
+.md-code-line {
+  min-height: 1.45em;
+  color: var(--fg);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre; /* kod się nie zawija — długą linię przewijamy w bok */
+}
+
+.md-code-more { color: var(--md-dim); font-size: 11.5px; }
+
+.md-kw { color: var(--md-kw); }
+.md-str { color: var(--md-str); }
+.md-num { color: var(--md-num); }
+.md-com { color: var(--md-frame); }
+
+/* ── tabela ────────────────────────────────────────────────────────────── */
+
+.md-table-wrap {
+  margin: 5px 0;
+  overflow-x: auto; /* kolumny bez zawijania — w bok, nie w dół */
+}
+
+.md-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.md-table th,
+.md-table td {
+  padding: 0 9px;
+  border-right: 1px solid var(--md-frame);
+  text-align: left;
+  font-weight: 400;
+}
+
+.md-table th:first-child,
+.md-table td:first-child { border-left: 1px solid var(--md-frame); }
+
+.md-table thead th {
+  border-bottom: 1px solid var(--md-frame);
+  color: var(--fg);
+  font-weight: 700; /* reguła `|---|` pod nagłówkiem, jak w TUI */
+}
+
+/* Wąski panel (500 px): ramki kodu tracą boczne krawędzie, etykieta języka
+   wchodzi do środka. Treść zostaje bez zmian. */
+@container viewer (max-width: 620px) {
+  .md-code {
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
+  .md-code-label {
+    top: 0;
+    right: auto;
+    left: 0;
+    padding: 0 4px 0 0;
+    background: transparent;
+  }
+  .md-code-body { padding-left: 0; padding-right: 0; }
+  .md-table { font-size: 11.5px; }
+  .md-table th,
+  .md-table td { padding: 0 6px; }
+}
 
 /* podświetlenie trafień szukania */
 mark {

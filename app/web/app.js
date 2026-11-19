@@ -202,41 +202,67 @@ function clear(node) {
   while (node.firstChild) node.removeChild(node.firstChild);
 }
 
-/** Dopisuje tekst z podświetleniem trafień szukania (bez innerHTML). */
-function appendText(parent, text, cls) {
-  const value = String(text == null ? "" : text);
-  const target = cls ? document.createElement("span") : parent;
-  if (cls) target.className = cls;
-
+/**
+ * Fragment tekstu z podświetleniem trafień szukania (bez innerHTML).
+ * Używane i przez zwykły tekst, i przez render markdownu (runda 20), żeby
+ * szukanie zaznaczało trafienia także w nagłówkach, listach i kodzie.
+ */
+function markedText(value) {
+  const text = String(value == null ? "" : value);
+  const frag = document.createDocumentFragment();
   const needle = normalize(state.query.trim());
   if (!needle) {
-    target.appendChild(document.createTextNode(value));
-  } else {
-    const { folded, map } = fold(value);
-    const hits = [];
-    let from = 0;
-    for (;;) {
-      const idx = folded.indexOf(needle, from);
-      if (idx === -1) break;
-      const start = map[idx];
-      const end = map[idx + needle.length - 1] + 1;
-      hits.push([start, end]);
-      from = idx + needle.length;
-    }
-    let cursor = 0;
-    for (const [start, end] of hits) {
-      if (start < cursor) continue;
-      if (start > cursor) target.appendChild(document.createTextNode(value.slice(cursor, start)));
-      const mark = document.createElement("mark");
-      mark.textContent = value.slice(start, end);
-      target.appendChild(mark);
-      cursor = end;
-    }
-    if (cursor < value.length) target.appendChild(document.createTextNode(value.slice(cursor)));
+    frag.appendChild(document.createTextNode(text));
+    return frag;
   }
+  const { folded, map } = fold(text);
+  const hits = [];
+  let from = 0;
+  for (;;) {
+    const idx = folded.indexOf(needle, from);
+    if (idx === -1) break;
+    const start = map[idx];
+    const end = map[idx + needle.length - 1] + 1;
+    hits.push([start, end]);
+    from = idx + needle.length;
+  }
+  let cursor = 0;
+  for (const [start, end] of hits) {
+    if (start < cursor) continue;
+    if (start > cursor) frag.appendChild(document.createTextNode(text.slice(cursor, start)));
+    const mark = document.createElement("mark");
+    mark.textContent = text.slice(start, end);
+    frag.appendChild(mark);
+    cursor = end;
+  }
+  if (cursor < text.length) frag.appendChild(document.createTextNode(text.slice(cursor)));
+  return frag;
+}
 
+/** Dopisuje tekst z podświetleniem trafień szukania (bez innerHTML). */
+function appendText(parent, text, cls) {
+  const target = cls ? document.createElement("span") : parent;
+  if (cls) target.className = cls;
+  target.appendChild(markedText(text));
   if (cls) parent.appendChild(target);
   return target;
+}
+
+/**
+ * Markdown wyłącznie w treści asystenta (runda 20: `thought`, `summary.reason`).
+ * Tekst użytkownika (`task`) i wyniki narzędzi zostają dosłowne — `**` w pliku
+ * użytkownika nie może zniknąć.
+ */
+function appendMarkdown(parent, text, cls) {
+  const box = el("div", cls ? "md " + cls : "md");
+  const source = String(text == null ? "" : text);
+  if (window.ArndtMarkdown) {
+    box.appendChild(window.ArndtMarkdown.render(source, { text: markedText }));
+  } else {
+    box.textContent = source;
+  }
+  parent.appendChild(box);
+  return box;
 }
 
 function el(tag, cls, text) {
@@ -807,9 +833,8 @@ function buildRow(ev, idx) {
     }
     case "thought": {
       head(body, "thought", Number.isFinite(d.step) ? `krok ${d.step}` : null);
-      const text = el("p", "ev-text thought");
-      appendText(text, d.thought || "");
-      body.appendChild(text);
+      // Runda 20: markdown tylko w treści asystenta — tak samo jak TUI.
+      if (String(d.thought || "").trim()) appendMarkdown(body, d.thought, "ev-thought-md");
       break;
     }
     case "tool_call": {
@@ -910,12 +935,12 @@ function buildRow(ev, idx) {
         item.appendChild(el("b", null, Number.isFinite(value) ? String(value) : "—"));
         grid.appendChild(item);
       }
-      if (d.reason) {
-        const reason = el("span", null, "· ");
-        appendText(reason, String(d.reason));
-        grid.appendChild(reason);
-      }
       body.appendChild(grid);
+      if (d.reason) {
+        const reason = el("div", "reason");
+        appendMarkdown(reason, String(d.reason), "ev-reason-md");
+        body.appendChild(reason);
+      }
       break;
     }
     case "repair": {

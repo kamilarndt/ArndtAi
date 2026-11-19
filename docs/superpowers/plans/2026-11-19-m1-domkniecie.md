@@ -52,35 +52,35 @@ bash (hook), git.
 - Produces: `make verify` — exit 0 tylko gdy `verify.py` i `--assert` przeszły;
   `scripts/hooks/pre-commit` — instalowany przez `git config core.hooksPath scripts/hooks`.
 
-- [ ] **Step 1: Napisz `Makefile`**
+- [x] **Step 1: Napisz `Makefile`**
 
 Cele: `verify` (run + assert), `test` (`cargo test`), `demo`. `verify` wypisuje
 linię `VERIFY OK` po sukcesie.
 
-- [ ] **Step 2: Sprawdź, że `make verify` przechodzi na czystym drzewie**
+- [x] **Step 2: Sprawdź, że `make verify` przechodzi na czystym drzewie**
 
 Run: `make verify`
 Expected: `CHECKS OK`, `VERIFY OK`, exit 0.
 
-- [ ] **Step 3: Napisz `scripts/hooks/pre-commit` (bash, `set -euo pipefail`)**
+- [x] **Step 3: Napisz `scripts/hooks/pre-commit` (bash, `set -euo pipefail`)**
 
 Kolejność: `make verify`, potem `git add checks craft.json`, potem `exit 0`.
 Przy błędzie `make` — komunikat na stderr z komendą do ręcznego uruchomienia
 i `exit 1`.
 
-- [ ] **Step 4: Zainstaluj hook i sprawdź, że blokuje**
+- [x] **Step 4: Zainstaluj hook i sprawdź, że blokuje**
 
 Run: `git config core.hooksPath scripts/hooks`, potem celowo zepsuj jeden test
 (zmiana w `app/src/store.rs`, potem `git checkout app/src/store.rs`),
 `git commit --allow-empty -m probe`.
 Expected: commit odrzucony, komunikat z `make verify`.
 
-- [ ] **Step 5: Sprawdź, że przechodzi i dokłada dowody**
+- [x] **Step 5: Sprawdź, że przechodzi i dokłada dowody**
 
 Run: `git commit --allow-empty -m "chore: hook pre-commit z verify.py"`
 Expected: commit przechodzi, `git show --stat` zawiera `checks/evidence.json`.
 
-- [ ] **Step 6: Dopisz do `AGENTS.md` sekcję o `make verify` i hooku; commit + push**
+- [x] **Step 6: Dopisz do `AGENTS.md` sekcję o `make verify` i hooku; commit + push**
 
 ### Task 2: test `kill -9` na `notify.send`
 
@@ -93,30 +93,30 @@ Expected: commit przechodzi, `git show --stat` zawiera `checks/evidence.json`.
   `{"url": "...", "message": "..."}` (patrz `docs/contracts/mcp.md`).
 - Produces: test `killing_the_process_inside_notify_send_does_not_resend_on_resume`.
 
-- [ ] **Step 1: Napisz listener TCP, który przyjmuje żądanie i nigdy nie odpowiada**
+- [x] **Step 1: Napisz listener TCP, który przyjmuje żądanie i nigdy nie odpowiada**
 
 `TcpListener::bind("127.0.0.1:0")`, wątek akceptuje połączenie, czyta nagłówki,
 wysyła `mpsc` sygnał „dotarło", potem śpi do końca testu.
 
-- [ ] **Step 2: Napisz czerwony test**
+- [x] **Step 2: Napisz czerwony test**
 
 Scenariusz: fake model zwraca krok `notify.send` na listener; uruchom binarkę
 jako dziecko; czekaj na sygnał z listenera; `Child::kill()` (SIGKILL);
 drugi bieg z `--resume` z modelem zwracającym `done`; asercje: listener dostał
 dokładnie 1 żądanie, drugi bieg exit 0, krok 1 w `state.db` nie jest `proposed`.
 
-- [ ] **Step 3: Uruchom test — musi być czerwony z właściwego powodu**
+- [x] **Step 3: Uruchom test — musi być czerwony z właściwego powodu**
 
 Run: `cargo test --test cli killing_the_process`
 Expected: FAIL (dziś brak takiego pokrycia; jeśli przejdzie od razu, sprawdź,
 czy SIGKILL naprawdę trafia w zablokowany `notify.send`).
 
-- [ ] **Step 4: Doprowadź do zielonego bez zmiany produkcyjnej, jeśli się da**
+- [x] **Step 4: Doprowadź do zielonego bez zmiany produkcyjnej, jeśli się da** (rdzeń bez zmian; poprawiona tylko konfiguracja testów)
 
 Jeśli test ujawni dziurę (np. powtórzony efekt), napraw `agent.rs` minimalnie —
 tylko to, co pokazuje test.
 
-- [ ] **Step 5: `make verify`, potem `GATES.md` G15 z hashem i commit + push**
+- [x] **Step 5: `make verify`, potem `GATES.md` G15 z hashem i commit** (push zablokowany polityką)
 
 ### Task 3: spec Fazy C i brief dla Craft Anything
 
@@ -128,7 +128,7 @@ tylko to, co pokazuje test.
 - Consumes: `docs/contracts/events.md` (format zdarzeń), `craft.json` (projekt CA).
 - Produces: brief gotowy do `ca-delegate` (folder, backend, rundy, komenda rebuild).
 
-- [ ] **Step 1: Spisz spec: jeden ekran (rozmowa + kroki), źródło danych JSONL,
+- [x] **Step 1: Spisz spec: jeden ekran (rozmowa + kroki), źródło danych JSONL,
   brak nowych zależności po stronie rdzenia; kryteria PASS.
-- [ ] **Step 2: Sprawdź spec z Grokiem (Orca browser) i zapisz jego uwagi.
-- [ ] **Step 3: Zleć CA przez `ca-delegate` jako osobny bieg; odbiór przez `ca-accept`.
+- [x] **Step 2: Sprawdź spec z Grokiem (Orca browser) i zapisz jego uwagi** (4 uwagi wdrożone: PASS #4 bez progu czasu, fixture 12 kind, reguła pełnych linii, statyczna strona OK).
+- [x] **Step 3: Zleć CA przez `ca-delegate`; odbiór ręczny** — `app/web/` gotowe (commit `d52a675`), 7 kryteriów sprawdzone w Orca browser.

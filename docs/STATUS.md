@@ -28,7 +28,10 @@ po SIGKILL, Python core (ADR-004).
 
 ## Co pozostaje (M1)
 
-1. Faza C — web UI (kontrakt eventów gotowy; render markdown gotowy do przeniesienia).
+1. ~~Faza C — web UI (MVP)~~ — `app/web/` (HTML+JS, bez zależności): lista sesji,
+   12 typów eventów, filtr `kind`, szukanie, tail po pełnych liniach; sprawdzone
+   w Orca browser (commit `d52a675`, zrzut `app/shots/faza-c-sesja.png`). Zostaje
+   przeniesienie renderu markdown z TUI i sterowanie zadaniami (poza MVP).
 2. ~~Perimetr MCP po SIGKILL~~ — sprawdzone 19 listopada: perimetr oddaje wynik
    z `steps.result_json`, efektu nie powtarza; trzy testy w `app/tests/cli.rs`.
 3. Python core (ADR-004 Proposed).

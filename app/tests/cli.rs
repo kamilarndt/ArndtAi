@@ -184,6 +184,29 @@ const CUT_ANSWER: &str =
 const CUT_ANSWER_2: &str = "{\"thought\":\"jeszcze-raz\"";
 const FINISH_ANSWER: &str = "{\"thought\":\"gotowe\",\"finish\":\"notatka zapisana\"}";
 
+/// Odpowiedź atrapy zależna od żądania: `stream: true` dostaje SSE
+/// (`data: {...delta...}`, potem `data: [DONE]`), a próba bez strumienia
+/// zwykły JSON. Ten sam `answer` w obu wariantach, więc testy liczą żądania,
+/// a nie format — tak jak w rundzie 21 czyta je `provider.rs`.
+fn sse_or_json(request: &str, answer: &str) -> (String, &'static str) {
+    if request.contains("\"stream\":true") {
+        let chunk = serde_json::json!({
+            "choices": [{ "delta": { "content": answer } }]
+        })
+        .to_string();
+        (
+            format!("data: {}\n\ndata: [DONE]\n\n", chunk),
+            "text/event-stream",
+        )
+    } else {
+        let body = serde_json::json!({
+            "choices": [{ "message": { "content": answer } }]
+        })
+        .to_string();
+        (body, "application/json")
+    }
+}
+
 fn fake_model(answers: Vec<String>) -> (String, Arc<AtomicUsize>) {
     let listener = TcpListener::bind("127.0.0.1:0").expect("wolny port na localhost");
     let addr = listener.local_addr().unwrap();
@@ -195,13 +218,11 @@ fn fake_model(answers: Vec<String>) -> (String, Arc<AtomicUsize>) {
                 Ok(pair) => pair,
                 Err(_) => return,
             };
-            let _ = read_http_request(&mut stream);
-            let body = serde_json::json!({
-                "choices": [{ "message": { "content": answer } }]
-            })
-            .to_string();
+            let request = read_http_body(&mut stream);
+            let (body, content_type) = sse_or_json(&request, &answer);
             let head = format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                content_type,
                 body.len()
             );
             let _ = stream.write_all(head.as_bytes());
@@ -263,13 +284,11 @@ fn fake_model_capturing(
                 Err(_) => return,
             };
             let body = read_http_body(&mut stream);
-            log.lock().unwrap().push(body);
-            let reply = serde_json::json!({
-                "choices": [{ "message": { "content": answer } }]
-            })
-            .to_string();
+            log.lock().unwrap().push(body.clone());
+            let (reply, content_type) = sse_or_json(&body, &answer);
             let head = format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                content_type,
                 reply.len()
             );
             let _ = stream.write_all(head.as_bytes());
@@ -973,13 +992,11 @@ fn fake_model_then_hang(answer: String) -> String {
     let addr = listener.local_addr().unwrap();
     std::thread::spawn(move || {
         if let Ok((mut stream, _)) = listener.accept() {
-            let _ = read_http_request(&mut stream);
-            let body = serde_json::json!({
-                "choices": [{ "message": { "content": answer } }]
-            })
-            .to_string();
+            let request = read_http_body(&mut stream);
+            let (body, content_type) = sse_or_json(&request, &answer);
             let head = format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                content_type,
                 body.len()
             );
             let _ = stream.write_all(head.as_bytes());

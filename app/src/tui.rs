@@ -14,7 +14,7 @@ use crate::agent::{self, Config};
 use crate::commands::{self, Handler};
 use crate::context::{self, MemoryLevel};
 use crate::models::{self, Catalog};
-use crate::provider::Brain;
+use crate::provider::{self, Brain};
 use crate::sessions::{self, Badge, Filter, SessionRow, State as RowState};
 use crate::settings::{self, Approval, Settings, Theme};
 use crate::tools;
@@ -143,6 +143,9 @@ struct Entry {
     tool: String,
     running: bool,
     ok: bool,
+    /// Runda 21: blok myśli rośnie na żywo ze strumienia providera. Po zdarzeniu
+    /// `thought` (albo końcu tury) znacznik gaśnie i blok renderuje się jak dotąd.
+    live: bool,
     /// Godzina zdarzenia `HH:MM` (czas lokalny) — prawa strona pasa zadania.
     stamp: String,
     /// Czas od wysłania zadania do tej myśli: `◆ Thought for 2.0s`.
@@ -162,6 +165,7 @@ impl Entry {
             tool: String::new(),
             running: false,
             ok: true,
+            live: false,
             stamp: clock_now(),
             latency: None,
         }
@@ -767,6 +771,9 @@ pub struct App {
 
     rx: Option<Receiver<Msg>>,
     events: Option<Receiver<Value>>,
+    /// Runda 21: przyrosty strumienia (poza transkryptem) — blok myśli rośnie
+    /// między zdarzeniami sesji, bez dopisywania linii do JSONL.
+    deltas: Option<Receiver<provider::Delta>>,
     tick_count: u64,
     quit: bool,
     toast: Option<String>,
@@ -898,6 +905,7 @@ impl App {
             turn_chars: 0,
             rx: None,
             events: None,
+            deltas: None,
             tick_count: 0,
             quit: false,
             toast: None,
@@ -1060,14 +1068,78 @@ impl App {
 
     // ── Zdarzenia ───────────────────────────────────────────────────────────
 
+    /// Runda 21: przyrost myślenia dopisuje się do **ostatniego** bloku
+    /// `Thought` oznaczonego jako `live`; gdy go nie ma (nowy krok albo
+    /// pierwszy przyrost), powstaje jeden nowy blok. Kanał `content` to JSON
+    /// decyzji — nie pokazujemy go w scrollbacku, bo po kroku przychodzi
+    /// normalne zdarzenie `thought` i render markdown.
+    fn apply_delta(&mut self, delta: provider::Delta) {
+        if delta.text.is_empty() {
+            return;
+        }
+        self.turn_chars = self.turn_chars.saturating_add(delta.text.len());
+        if delta.channel != provider::Channel::Reasoning {
+            return;
+        }
+        let step = delta.step;
+        let grows = self.entries.last().is_some_and(|last| {
+            last.kind == Kind::Thought && last.live && (last.step == step || last.step == 0)
+        });
+        if grows {
+            if let Some(last) = self.entries.last_mut() {
+                last.subject.push_str(&delta.text);
+                if last.step == 0 {
+                    last.step = step;
+                }
+            }
+        } else {
+            let latency = if self.turn_first_thought {
+                self.turn_started.map(|started| started.elapsed())
+            } else {
+                None
+            };
+            self.turn_first_thought = false;
+            let mut entry = Entry::new(Kind::Thought, "", delta.text).step(step);
+            entry.live = true;
+            entry.latency = latency;
+            self.push(entry);
+        }
+        if (step as usize) > self.steps {
+            self.steps = step as usize;
+        }
+    }
+
     pub fn poll(&mut self) {
+        // Runda 21: kolejność w obrębie jednego `poll` musi być jak w sesji:
+        // najpierw `task` (pas zadania nad blokami), potem przyrosty strumienia,
+        // na końcu reszta zdarzeń — dopiero wtedy `thought` domyka pełny blok.
+        // Oba kanały są niezależne, więc bez tego porządku przy szybkim SSE
+        // myśl mogłaby wylądować nad pasem zadania.
         let mut batch: Vec<Value> = Vec::new();
         if let Some(rx) = &self.events {
             while let Ok(value) = rx.try_recv() {
                 batch.push(value);
             }
         }
+        let mut deferred: Vec<Value> = Vec::new();
         for value in batch {
+            let kind = value.get("kind").and_then(|v| v.as_str()).unwrap_or("");
+            if kind == "task" {
+                self.handle_event(value);
+            } else {
+                deferred.push(value);
+            }
+        }
+        let mut deltas: Vec<provider::Delta> = Vec::new();
+        if let Some(rx) = &self.deltas {
+            while let Ok(delta) = rx.try_recv() {
+                deltas.push(delta);
+            }
+        }
+        for delta in deltas {
+            self.apply_delta(delta);
+        }
+        for value in deferred {
             self.handle_event(value);
         }
         // Runda 15: pytanie trybu `ask`. Agent stoi na bramce, dopóki nie
@@ -1126,8 +1198,15 @@ impl App {
         }
         self.rx = None;
         self.events = None;
+        self.deltas = None;
         self.toast = None;
         context::set_event_sink(None);
+        provider::set_delta_sink(None);
+        // Tura może się skończyć błędem przed `thought` — żaden blok nie może
+        // zostać z migającym znacznikiem „live”.
+        for entry in self.entries.iter_mut() {
+            entry.live = false;
+        }
         // Runda 15: po zamknięciu tury nie ma na co czekać. Otwarte pytanie
         // (np. po błędzie perimetru) kończy się odmową, żeby wątek nie wisiał.
         if self.question.take().is_some() {
@@ -1180,6 +1259,24 @@ impl App {
                     None
                 };
                 self.turn_first_thought = false;
+                // Runda 21: blok rósł na żywo ze strumienia — zamykamy go
+                // w miejscu (bez drugiego wpisu i bez przeskoku scrollbacku).
+                // Zachowujemy pełne myślenie; puste domykamy treścią zdarzenia.
+                if let Some(last) = self.entries.last_mut() {
+                    if last.kind == Kind::Thought && last.live {
+                        last.live = false;
+                        if last.step == step || last.step == 0 {
+                            last.step = step;
+                            if last.subject.trim().is_empty() {
+                                last.subject = thought;
+                            }
+                            if last.latency.is_none() {
+                                last.latency = latency;
+                            }
+                            return;
+                        }
+                    }
+                }
                 let mut entry = Entry::new(Kind::Thought, "", thought).step(step);
                 entry.latency = latency;
                 // Runda 18: gdy model dopisuje dalszy ciąg tej samej myśli
@@ -2703,11 +2800,14 @@ impl App {
         self.turn_chars = 0;
 
         let (event_tx, event_rx) = mpsc::channel();
+        let (delta_tx, delta_rx) = mpsc::channel();
         let (done_tx, done_rx) = mpsc::channel();
         self.events = Some(event_rx);
+        self.deltas = Some(delta_rx);
         self.rx = Some(done_rx);
         // Sink podpięty PRZED startem pętli, żeby nie zgubić eventu `task`.
         context::set_event_sink(Some(event_tx));
+        provider::set_delta_sink(Some(delta_tx));
         let mut cfg = self.config();
         // Runda 15: tryb `ask` dostaje bramkę zgód; w `always-approve` nic
         // się nie zmienia (żadnego pytania, żadnych kanałów).
@@ -4612,6 +4712,13 @@ fn entry_rows(entry: &Entry, width: usize, timestamps: bool, md: &markdown::Cach
                     Style::default().fg(GRAY_DIM),
                 ));
             }
+            // Runda 21: znacznik, że tekst jeszcze rośnie ze strumienia.
+            if entry.live {
+                header.push(Span::styled(
+                    " · streaming",
+                    Style::default().fg(GRAY_DIM),
+                ));
+            }
             rows.push(Row::plain(header));
             if !entry.subject.trim().is_empty() {
                 // Runda 18: markdown tylko tutaj — to tekst asystenta.
@@ -5195,6 +5302,70 @@ pub fn markdown_narrow_shot(workspace: PathBuf) -> App {
     markdown_shot(workspace)
 }
 
+/// Runda 21: tekst bloku myśli w trakcie strumienia (urwany w połowie zdania,
+/// znacznik `live`). Zrzut pokazuje stan, w którym model jeszcze pisze.
+pub const STREAM_SAMPLE: &str = "\
+Sprawdzam plik i planuję kolejny krok:
+
+1. odczyt `notatka.txt`
+2. porównanie z tym, co zapisałem
+
+Jeśli treść się zgadza, zamykam zadanie. W przeciwnym razie dopiszę brakującą linię i sprawdzę **jeszcze raz** —";
+
+/// Ekran w trakcie strumienia (`--screenshot-stream`): pierwszy krok zamknięty,
+/// drugi rośnie na żywo. Ten sam układ co `markdown_shot`, tylko blok myśli ma
+/// znacznik `streaming`, a wiersz aktywności liczy czas i znaki.
+pub fn stream_shot(workspace: PathBuf) -> App {
+    let _ = std::fs::remove_dir_all(&workspace);
+    let _ = std::fs::create_dir_all(&workspace);
+    let mut opts = Options::new(workspace);
+    opts.provider = Some("mock".to_string());
+    opts.max_steps = 12;
+    opts.mcp = false;
+    let mut app = App::new(opts);
+    app.catalog = models::demo_catalog();
+    app.model = "mimo-v2.6-flash".to_string();
+
+    app.push(Entry::new(
+        Kind::Task,
+        "",
+        "write notatka.txt :: plan przebiegu; read notatka.txt",
+    ));
+    let mut first = Entry::new(
+        Kind::Thought,
+        "",
+        "Zapisuję plik, potem go odczytam, żeby sprawdzić treść.",
+    )
+    .step(1);
+    first.latency = Some(Duration::from_millis(1200));
+    app.push(first);
+    let mut call = Entry::new(Kind::Call, "Writing", "notatka.txt")
+        .detail("+38 B")
+        .step(1);
+    call.tool = "fs.write".to_string();
+    call.running = false;
+    app.push(call);
+    let mut done = Entry::new(Kind::Ok, "Wrote", "notatka.txt")
+        .detail("+38 B")
+        .step(1);
+    done.tool = "fs.write".to_string();
+    app.push(done);
+
+    let mut live = Entry::new(Kind::Thought, "", STREAM_SAMPLE).step(2);
+    live.live = true;
+    app.push(live);
+
+    app.running = true;
+    app.turn_started = Some(Instant::now());
+    app.turn_chars = 1840;
+    app.steps = 2;
+    app.tool_calls = 1;
+    app.input.clear();
+    app.cursor = 0;
+    app.show_scrollback_start();
+    app
+}
+
 /// Ekran startowy do zrzutu: lista prawdziwych sesji z `.agent/sessions`
 /// bieżącego workspace'u (nic nie tworzy, nic nie kasuje).
 pub fn list_app(workspace: PathBuf) -> App {
@@ -5647,6 +5818,104 @@ mod tests {
             "at": 1, "kind": "thought", "data": { "step": 2, "thought": "cos nowego" }
         }));
         assert_eq!(app.entries.len(), 2);
+        let _ = std::fs::remove_dir_all(&ws);
+    }
+
+    /// Runda 21: przyrosty strumienia tworzą jeden blok, który rośnie w miejscu;
+    /// zdarzenie `thought` zamyka go, nie dokładając drugiego wpisu.
+    #[test]
+    fn streamed_reasoning_grows_one_live_block_and_closes_it() {
+        let _guard = test_guard();
+        let ws = temp_ws("stream-live");
+        let mut app = App::new(Options::new(ws.clone()));
+        app.turn_started = Some(Instant::now());
+        for (i, piece) in ["Sprawdzam", " plik", " i plan"].iter().enumerate() {
+            app.apply_delta(provider::Delta {
+                step: 1,
+                channel: provider::Channel::Reasoning,
+                text: piece.to_string(),
+            });
+            assert_eq!(app.entries.len(), 1, "krok {}: jeden blok", i);
+            assert!(app.entries[0].live, "blok rośnie na żywo");
+        }
+        assert_eq!(app.entries[0].subject, "Sprawdzam plik i plan");
+        // Kanał `content` to JSON decyzji — nie trafia do scrollbacku.
+        app.apply_delta(provider::Delta {
+            step: 1,
+            channel: provider::Channel::Content,
+            text: "{\"thought\":\"x\"}".to_string(),
+        });
+        assert_eq!(app.entries.len(), 1);
+        assert!(!app.entries[0].subject.contains("thought"));
+        app.handle_event(serde_json::json!({
+            "at": 1, "kind": "thought", "data": { "step": 1, "thought": "Sprawdzam plik i plan" }
+        }));
+        assert_eq!(app.entries.len(), 1, "zamknięcie w miejscu, bez duplikatu");
+        assert!(!app.entries[0].live);
+        // Kolejny krok dostaje własny bloczek.
+        app.apply_delta(provider::Delta {
+            step: 2,
+            channel: provider::Channel::Reasoning,
+            text: "Dalej".to_string(),
+        });
+        assert_eq!(app.entries.len(), 2);
+        assert!(app.entries[1].live);
+        let _ = std::fs::remove_dir_all(&ws);
+    }
+
+    /// Zrzut rundy 21: w trakcie strumienia widać znacznik i rosnący tekst.
+    #[test]
+    fn stream_screenshot_shows_the_live_thought_block() {
+        let _guard = test_guard();
+        let ws = temp_ws("stream-shot");
+        let app = stream_shot(ws.clone());
+        let screen = render(&app, 120, 38);
+        assert!(screen.contains("streaming"), "brak znacznika: {}", screen);
+        assert!(
+            screen.contains("Sprawdzam plik i planuję"),
+            "brak tekstu myśli: {}",
+            screen
+        );
+        assert!(screen.contains("Responding"), "brak wiersza aktywności");
+        let _ = std::fs::remove_dir_all(&ws);
+    }
+
+    /// Oba kanały są niezależne: `poll` musi najpierw położyć pas zadania,
+    /// potem dopisać przyrost, a na końcu domknąć blok zdarzeniem `thought`.
+    #[test]
+    fn poll_keeps_task_above_the_streamed_thought() {
+        let _guard = test_guard();
+        let ws = temp_ws("stream-order");
+        let mut app = App::new(Options::new(ws.clone()));
+        let (event_tx, event_rx) = mpsc::channel();
+        let (delta_tx, delta_rx) = mpsc::channel();
+        app.events = Some(event_rx);
+        app.deltas = Some(delta_rx);
+        app.running = true;
+        app.turn_started = Some(Instant::now());
+        event_tx
+            .send(serde_json::json!({
+                "at": 1, "kind": "task", "data": { "text": "zadanie" }
+            }))
+            .unwrap();
+        delta_tx
+            .send(provider::Delta {
+                step: 1,
+                channel: provider::Channel::Reasoning,
+                text: "myśl".to_string(),
+            })
+            .unwrap();
+        event_tx
+            .send(serde_json::json!({
+                "at": 1, "kind": "thought", "data": { "step": 1, "thought": "myśl" }
+            }))
+            .unwrap();
+        app.poll();
+        assert_eq!(app.entries.len(), 2, "pas zadania i jeden blok myśli");
+        assert!(matches!(app.entries[0].kind, Kind::Task));
+        assert!(matches!(app.entries[1].kind, Kind::Thought));
+        assert_eq!(app.entries[1].subject, "myśl");
+        assert!(!app.entries[1].live, "thought zamyka blok");
         let _ = std::fs::remove_dir_all(&ws);
     }
 

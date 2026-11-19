@@ -332,7 +332,18 @@ pub fn run(task: &str, cfg: &Config) -> Report {
         let step_no = turn_base.saturating_sub(1) + steps as u64;
 
         emit(cfg, "RECEIVED", &format!("krok {}", step_no));
-        let result = brain.next(task, &rendered, &turns);
+        // Runda 21: przyrosty strumienia idą do TUI osobnym kanałem (poza
+        // transkryptem); bez odbiorcy callback nie powstaje i nic nie drukujemy.
+        let mut on_delta = |channel: crate::provider::Channel, text: &str| {
+            crate::provider::publish_delta(step_no, channel, text);
+        };
+        let progress: Option<&mut dyn FnMut(crate::provider::Channel, &str)> =
+            if crate::provider::delta_sink_active() {
+                Some(&mut on_delta)
+            } else {
+                None
+            };
+        let result = brain.next(task, &rendered, &turns, progress);
         // Runda 12: kazda proba naprawy zostaje w transkrypcie (JSONL + SQLite),
         // takze wtedy, gdy zadanie konczy sie DONE.
         for notice in brain.take_repairs() {

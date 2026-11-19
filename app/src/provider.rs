@@ -5,12 +5,31 @@
 use serde_json::{json, Value};
 use std::env;
 use std::fs;
-use std::io::Write;
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::mpsc::Sender;
+use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+/// Kanał przyrostu ze strumienia providera: `reasoning` to myślenie modelu,
+/// `content` — tekst odpowiedzi (u nas: JSON decyzji).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Channel {
+    Reasoning,
+    Content,
+}
+
+/// Jeden przyrost strumienia: krok pętli (do dopasowania bloku w TUI),
+/// kanał i nowy fragment tekstu (już zdekodowany, bez `data:`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Delta {
+    pub step: u64,
+    pub channel: Channel,
+    pub text: String,
+}
+
 
 #[derive(Clone)]
 pub struct Turn {
@@ -203,10 +222,11 @@ impl Brain {
         task: &str,
         prefix: &str,
         turns: &[Turn],
+        on_delta: Option<&mut dyn FnMut(Channel, &str)>,
     ) -> Result<Decision, String> {
         match self {
             Brain::Mock(m) => Ok(m.next()),
-            Brain::Remote(r) => r.next(task, prefix, turns),
+            Brain::Remote(r) => r.next(task, prefix, turns, on_delta),
         }
     }
 
@@ -390,6 +410,57 @@ pub fn session_id() -> String {
         .clone()
 }
 
+// ── Strumień przyrostów do TUI (runda 21) ──────────────────────────────────
+//
+// Ten sam wzorzec co `context::set_event_sink`: konsument w tym samym procesie
+// dostaje przyrosty **poza** transkryptem. JSONL i kontrakty zostają bez zmian
+// — myślenie modelu nie jest zdarzeniem sesji, tylko stanem ekranu.
+
+static DELTA_SINK: OnceLock<Mutex<Option<Sender<Delta>>>> = OnceLock::new();
+
+fn delta_slot() -> &'static Mutex<Option<Sender<Delta>>> {
+    DELTA_SINK.get_or_init(|| Mutex::new(None))
+}
+
+/// Podpięcie (albo odpięcie, `None`) odbiorcy przyrostów. Jeden konsument;
+/// zamknięcie kanału automatycznie odpina sink.
+pub fn set_delta_sink(tx: Option<Sender<Delta>>) {
+    if let Ok(mut slot) = delta_slot().lock() {
+        *slot = tx;
+    }
+}
+
+/// Czy TUI czeka na przyrosty — bez odbiorcy pętla nie tworzy callbacku.
+pub fn delta_sink_active() -> bool {
+    delta_slot()
+        .lock()
+        .map(|slot| slot.is_some())
+        .unwrap_or(false)
+}
+
+/// Wysyła przyrost do TUI. Brak odbiorcy to normalny tryb CLI/demo:
+/// zero wypisywania, zero kosztu poza jednym sprawdzeniem.
+pub fn publish_delta(step: u64, channel: Channel, text: &str) {
+    if text.is_empty() {
+        return;
+    }
+    let Ok(mut slot) = delta_slot().lock() else {
+        return;
+    };
+    let Some(tx) = slot.as_ref() else {
+        return;
+    };
+    let delta = Delta {
+        step,
+        channel,
+        text: text.to_string(),
+    };
+    if tx.send(delta).is_err() {
+        *slot = None;
+    }
+}
+
+
 /// Gorny limit tokenow odpowiedzi. 1200 ucinalo JSON przy dluzszym `thought`
 /// albo `args`: model urywal obiekt i zadanie konczylo sie `FAILED_ERROR`
 /// bez zadnej proby naprawy (runda 12).
@@ -411,6 +482,12 @@ pub fn note_usage(response: &Value) {
     let Some(usage) = response.get("usage") else {
         return;
     };
+    note_usage_object(usage);
+}
+
+/// `usage` spod wskazanego obiektu (Anthropic w strumieniu chowa je
+/// w `message.usage`, więc wołający podaje właściwy węzeł).
+fn note_usage_object(usage: &Value) {
     let prompt = usage
         .get("prompt_tokens")
         .or_else(|| usage.get("input_tokens"))
@@ -455,35 +532,100 @@ pub const REPAIR_INSTRUCTION: &str = "\n\nUWAGA: poprzednia odpowiedz nie byla p
 
 /// Jedno zadanie do modelu: adres, cialo i naglowki (klucz nigdy w argv).
 struct Wire {
+    kind: RemoteKind,
     url: String,
     body: String,
     headers: Vec<String>,
 }
 
-impl RemoteBrain {
-    fn next(&mut self, task: &str, prefix: &str, turns: &[Turn]) -> Result<Decision, String> {
-        // Transport zdalny: `curl` + wyciagniecie tekstu z odpowiedzi dostawcy.
-        // Samo doklejenie proby naprawy siedzi w `converse`, wiec testy liczą
-        // zadania bez sieci.
-        let kind = self.kind;
-        self.converse(task, prefix, turns, move |wire: &Wire| {
-            let response = http_post(&wire.url, &wire.body, &wire.headers)?;
-            note_usage(&response);
-            let text = match kind {
-                RemoteKind::Anthropic => response
-                    .pointer("/content/0/text")
-                    .and_then(|v| v.as_str()),
-                RemoteKind::OpenAi => response
-                    .pointer("/choices/0/message/content")
-                    .and_then(|v| v.as_str()),
-            }
-            .map(|s| s.to_string());
+impl Wire {
+    /// To samo zadanie bez strumienia — jedna próba ponowna po zerwanym SSE.
+    /// Reszta ciała (prompt, limit, naprawa) zostaje bez zmian.
+    fn without_stream(&self) -> Wire {
+        let mut value: Value = serde_json::from_str(&self.body).unwrap_or_else(|_| json!({}));
+        if let Some(object) = value.as_object_mut() {
+            object.insert("stream".to_string(), json!(false));
+        }
+        Wire {
+            kind: self.kind,
+            url: self.url.clone(),
+            body: value.to_string(),
+            headers: self.headers.clone(),
+        }
+    }
+}
 
-            text.ok_or_else(|| {
-                let preview = truncate(&response.to_string(), 400);
-                format!("odpowiedz modelu bez tresci: {}", preview)
-            })
-        })
+impl RemoteBrain {
+    fn next(
+        &mut self,
+        task: &str,
+        prefix: &str,
+        turns: &[Turn],
+        on_delta: Option<&mut dyn FnMut(Channel, &str)>,
+    ) -> Result<Decision, String> {
+        // Transport zdalny: `curl -N` + parsowanie SSE. Gdy strumień padnie
+        // (rozłączenie, urwany chunk), jedna próba ponowna **bez** strumienia;
+        // dopiero potem błąd kroku. Parsowanie i naprawa JSON-a zostają w
+        // `converse`, więc testy liczą zadania bez sieci.
+        match on_delta {
+            Some(callback) => self.next_with(task, prefix, turns, callback),
+            None => {
+                // Bez odbiorcy strumień czytamy dalej (format odpowiedzi jest
+                // ten sam), ale żaden przyrost nie wychodzi na zewnątrz.
+                let mut noop = |_: Channel, _: &str| {};
+                self.next_with(task, prefix, turns, &mut noop)
+            }
+        }
+    }
+
+    /// `F: ?Sized`, bo z pętli agenta przychodzi `&mut dyn FnMut` — bez tego
+    /// każde wywołanie zmuszałoby do konkretnego typu i reborrow by nie przeszedł.
+    fn next_with<F>(
+        &mut self,
+        task: &str,
+        prefix: &str,
+        turns: &[Turn],
+        on_delta: &mut F,
+    ) -> Result<Decision, String>
+    where
+        F: FnMut(Channel, &str) + ?Sized,
+    {
+        let kind = self.kind;
+        let fell_back = AtomicBool::new(false);
+        let result = self.converse(task, prefix, turns, |wire: &Wire| {
+            match http_stream(wire, Some(&mut *on_delta)) {
+                Ok(text) => Ok(text),
+                Err(stream_error) => {
+                    fell_back.store(true, Ordering::Relaxed);
+                    let plain = wire.without_stream();
+                    let response = http_post(&plain.url, &plain.body, &plain.headers).map_err(
+                        |plain_error| {
+                            format!(
+                                "{}; proba bez strumienia: {}",
+                                truncate(&stream_error, 300),
+                                truncate(&plain_error, 300)
+                            )
+                        },
+                    )?;
+                    note_usage(&response);
+                    response_text(kind, &response).ok_or_else(|| {
+                        let preview = truncate(&response.to_string(), 400);
+                        format!(
+                            "odpowiedz modelu bez tresci po strumieniu ({}): {}",
+                            truncate(&stream_error, 200),
+                            preview
+                        )
+                    })
+                }
+            }
+        });
+        if fell_back.load(Ordering::Relaxed) {
+            self.repairs.push(
+                "strumien przerwany — jedna proba bez strumienia (bez powtorki efektu)"
+                    .to_string(),
+            );
+        }
+        result
     }
 
     /// Jedno zadanie, a przy bledzie parsowania dokladnie jedna proba naprawy
@@ -534,7 +676,8 @@ impl RemoteBrain {
     }
 
     /// Cialo zadania w jednym miejscu: pierwsza proba i naprawa roznia sie
-    /// tylko instrukcja na koncu wiadomosci uzytkownika.
+    /// tylko instrukcja na koncu wiadomosci uzytkownika. `stream: true` jest
+    /// w obu sciezkach (Anthropic i OpenAI-compatible) — runda 21.
     fn wire(&self, task: &str, prefix: &str, turns: &[Turn], repair: bool) -> Wire {
         let system = system_prompt(&self.allowed, &self.skills);
         let mut user = String::new();
@@ -562,12 +705,14 @@ impl RemoteBrain {
             RemoteKind::Anthropic => json!({
                 "model": self.model.clone(),
                 "max_tokens": self.max_tokens,
+                "stream": true,
                 "system": system,
                 "messages": [{ "role": "user", "content": user }]
             }),
             RemoteKind::OpenAi => json!({
                 "model": self.model.clone(),
                 "max_tokens": self.max_tokens,
+                "stream": true,
                 "messages": [
                     { "role": "system", "content": system },
                     { "role": "user", "content": user }
@@ -584,6 +729,7 @@ impl RemoteBrain {
         };
 
         Wire {
+            kind: self.kind,
             url,
             body: body.to_string(),
             headers: request_headers(self.kind, &self.api_key, &self.session),
@@ -809,6 +955,279 @@ fn http_post(url: &str, body: &str, headers: &[String]) -> Result<Value, String>
 
     let text = String::from_utf8_lossy(&output.stdout).to_string();
     serde_json::from_str(&text).map_err(|e| format!("odpowiedz nie jest JSON-em: {}", e))
+}
+
+/// Tekst odpowiedzi z pełnego (nie-strumieniowego) JSON-a dostawcy.
+fn response_text(kind: RemoteKind, response: &Value) -> Option<String> {
+    match kind {
+        RemoteKind::Anthropic => {
+            // Przy extended thinking `content[0]` bywa blokiem `thinking`;
+            // bierzemy pierwszy blok typu `text`, a gdy go brak — pierwszy tekst.
+            let blocks = response.get("content").and_then(|v| v.as_array())?;
+            blocks
+                .iter()
+                .find(|block| block.get("type").and_then(|v| v.as_str()) == Some("text"))
+                .or_else(|| {
+                    blocks.iter().find(|block| {
+                        block.get("text").and_then(|v| v.as_str()).is_some()
+                    })
+                })
+                .and_then(|block| block.get("text"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        }
+        RemoteKind::OpenAi => response
+            .pointer("/choices/0/message/content")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
+    }
+}
+
+// ── SSE (runda 21) ─────────────────────────────────────────────────────────
+//
+// `curl -N` oddaje linie `data: {...}` w miarę napływu. OpenAI-compatible
+// (OC-Go) pakuje przyrosty w `choices[0].delta`: `reasoning` to myślenie,
+// `content` — odpowiedź. Anthropic wysyła `content_block_delta` z
+// `thinking_delta` / `text_delta`. Oba kanały składamy osobno; wynik funkcji
+// to nadal pełny tekst odpowiedzi, żeby pętla i naprawa JSON-a zostały bez
+// zmian. Śmieci (komentarze SSE, linie bez `data:`, nie-JSON) są pomijane —
+// pojedynczy zły chunk nie może wywalić całego kroku.
+
+#[derive(Default)]
+struct Sse {
+    /// Sklejona odpowiedź (to, co dziś wracało jako `content`).
+    content: String,
+    /// Sklejone myślenie — tylko do podglądu w TUI, nie do JSON-a decyzji.
+    reasoning: String,
+    /// `data: [DONE]` (OpenAI) albo `message_stop` (Anthropic).
+    done: bool,
+}
+
+impl Sse {
+    fn push<F>(
+        &mut self,
+        channel: Channel,
+        text: Option<&str>,
+        on: &mut Option<&mut F>,
+    )
+    where
+        F: FnMut(Channel, &str) + ?Sized,
+    {
+        let Some(text) = text else {
+            return;
+        };
+        if text.is_empty() {
+            return;
+        }
+        match channel {
+            Channel::Reasoning => self.reasoning.push_str(text),
+            Channel::Content => self.content.push_str(text),
+        }
+        if let Some(callback) = on.as_deref_mut() {
+            callback(channel, text);
+        }
+    }
+
+    /// Jedna linia SSE. Błąd pojedynczej linii to nie błąd strumienia:
+    /// rozłączenie rozpoznaje warstwa czytająca `curl`.
+    fn feed<F>(
+        &mut self,
+        line: &str,
+        kind: RemoteKind,
+        on: &mut Option<&mut F>,
+    )
+    where
+        F: FnMut(Channel, &str) + ?Sized,
+    {
+        if self.done {
+            return;
+        }
+        let line = line.trim_end_matches('\r').trim_start();
+        if line.is_empty() || line.starts_with(':') || line.starts_with("event:") {
+            return;
+        }
+        let Some(payload) = line.strip_prefix("data:") else {
+            return;
+        };
+        let payload = payload.trim_start();
+        if payload.is_empty() {
+            return;
+        }
+        if payload == "[DONE]" {
+            self.done = true;
+            return;
+        }
+        let Ok(value) = serde_json::from_str::<Value>(payload) else {
+            return;
+        };
+
+        match kind {
+            RemoteKind::OpenAi => {
+                if let Some(delta) = value.pointer("/choices/0/delta") {
+                    // OC-Go/DeepSeek: `reasoning`; część dostawców: `reasoning_content`.
+                    let reasoning = delta
+                        .get("reasoning")
+                        .or_else(|| delta.get("reasoning_content"))
+                        .and_then(|v| v.as_str());
+                    self.push(Channel::Reasoning, reasoning, on);
+                    let content = delta.get("content").and_then(|v| v.as_str());
+                    self.push(Channel::Content, content, on);
+                }
+            }
+            RemoteKind::Anthropic => {
+                let event = value.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                match event {
+                    "content_block_delta" => {
+                        if let Some(delta) = value.get("delta") {
+                            match delta.get("type").and_then(|v| v.as_str()).unwrap_or("") {
+                                "thinking_delta" => self.push(
+                                    Channel::Reasoning,
+                                    delta.get("thinking").and_then(|v| v.as_str()),
+                                    on,
+                                ),
+                                "text_delta" => self.push(
+                                    Channel::Content,
+                                    delta.get("text").and_then(|v| v.as_str()),
+                                    on,
+                                ),
+                                _ => {}
+                            }
+                        }
+                    }
+                    "message_start" => {
+                        if let Some(usage) = value.pointer("/message/usage") {
+                            note_usage_object(usage);
+                        }
+                    }
+                    "message_stop" => self.done = true,
+                    _ => {}
+                }
+            }
+        }
+        note_usage(&value);
+    }
+}
+
+/// `curl -N`: ciało idzie przez stdin (jak [`http_post`]), ale stdout czytamy
+/// linia po linii, więc callback widzi przyrosty w trakcie odpowiedzi.
+fn http_stream<F>(wire: &Wire, mut on_delta: Option<&mut F>) -> Result<String, String>
+where
+    F: FnMut(Channel, &str) + ?Sized,
+{
+    let dir = std::env::temp_dir();
+    let config = write_private_config(&dir, &curl_config_text(&wire.headers))?;
+    let mut argv = curl_argv(&wire.url, &config.to_string_lossy(), request_timeout_secs());
+    argv.push("-N".to_string());
+
+    let mut cmd = Command::new("curl");
+    cmd.args(&argv)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    let mut child = match cmd.spawn() {
+        Ok(c) => c,
+        Err(e) => {
+            let _ = fs::remove_file(&config);
+            return Err(format!("nie mozna uruchomic curl: {}", e));
+        }
+    };
+
+    if let Some(stdin) = child.stdin.as_mut() {
+        if let Err(e) = stdin.write_all(wire.body.as_bytes()) {
+            let _ = child.kill();
+            let _ = fs::remove_file(&config);
+            return Err(format!("nie mozna wyslac zapytania: {}", e));
+        }
+    }
+    drop(child.stdin.take());
+
+    let Some(stderr) = child.stderr.take() else {
+        let _ = child.kill();
+        let _ = fs::remove_file(&config);
+        return Err("brak stderr dla curl".to_string());
+    };
+    let err_thread = std::thread::spawn(move || {
+        let mut text = String::new();
+        let mut pipe = stderr;
+        let _ = pipe.read_to_string(&mut text);
+        text
+    });
+
+    let Some(stdout) = child.stdout.take() else {
+        let _ = child.kill();
+        let _ = fs::remove_file(&config);
+        return Err("brak stdout dla curl".to_string());
+    };
+
+    let mut sse = Sse::default();
+    let mut read_error: Option<String> = None;
+    {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            match line {
+                Ok(line) => {
+                    if !sse.done {
+                        sse.feed(&line, wire.kind, &mut on_delta);
+                    }
+                }
+                Err(e) => {
+                    read_error = Some(format!("strumien przerwany: {}", e));
+                    break;
+                }
+            }
+        }
+    }
+
+    if read_error.is_some() {
+        let _ = child.kill();
+    }
+    let status = child
+        .wait()
+        .map_err(|e| format!("curl nie zakonczyl sie: {}", e))?;
+    let stderr_text = err_thread.join().unwrap_or_default();
+    let _ = fs::remove_file(&config);
+
+    if let Some(error) = read_error {
+        return Err(error);
+    }
+    if !status.success() {
+        return Err(format!("curl blad: {}", truncate(stderr_text.trim(), 300)));
+    }
+    if sse.content.is_empty() {
+        let detail = if sse.reasoning.is_empty() {
+            truncate(stderr_text.trim(), 200)
+        } else {
+            "tylko reasoning, brak tresci".to_string()
+        };
+        return Err(format!("strumien bez tresci odpowiedzi: {}", detail));
+    }
+    Ok(sse.content)
+}
+
+/// Strumień, a po jego błędzie **jedna** próba bez strumienia. Flaga mówi,
+/// czy fallback był użyty — pętla dopisuje wtedy `repair` do transkryptu.
+/// (Produkcja robi to samo w `next`; helper zostaje, by test mógł podmienić
+/// oba transporty bez sieci.)
+#[cfg(test)]
+fn stream_with_fallback<S, P>(stream: S, plain: P) -> (Result<String, String>, bool)
+where
+    S: FnOnce() -> Result<String, String>,
+    P: FnOnce() -> Result<String, String>,
+{
+    match stream() {
+        Ok(text) => (Ok(text), false),
+        Err(stream_error) => {
+            let retry = plain().map_err(|plain_error| {
+                format!(
+                    "{}; proba bez strumienia: {}",
+                    truncate(&stream_error, 300),
+                    truncate(&plain_error, 300)
+                )
+            });
+            (retry, true)
+        }
+    }
 }
 
 fn parse_decision(text: &str) -> Result<Decision, String> {
@@ -1256,5 +1675,179 @@ mod tests {
         assert_eq!(calls, 1);
         assert!(err.contains("timeout"), "{}", err);
         assert!(brain.take_repairs().is_empty());
+    }
+
+    // ── Runda 21: SSE i przyrosty ───────────────────────────────────────────
+
+    /// Wszystkie linie jednego strumienia; callback zbiera przyrosty.
+    fn feed_lines(
+        sse: &mut Sse,
+        kind: RemoteKind,
+        lines: &[&str],
+    ) -> Vec<(Channel, String)> {
+        let mut seen: Vec<(Channel, String)> = Vec::new();
+        {
+            let mut callback = |channel: Channel, text: &str| {
+                seen.push((channel, text.to_string()));
+            };
+            let mut on: Option<&mut dyn FnMut(Channel, &str)> = Some(&mut callback);
+            for line in lines {
+                sse.feed(line, kind, &mut on);
+            }
+        }
+        seen
+    }
+
+    #[test]
+    fn openai_sse_yields_five_increments_and_the_joined_content() {
+        let mut sse = Sse::default();
+        let lines: Vec<String> = [
+            r#"{"choices":[{"delta":{"reasoning":"Myślę"}}]}"#,
+            r#"{"choices":[{"delta":{"reasoning":" nad"}}]}"#,
+            r#"{"choices":[{"delta":{"reasoning":" tym"}}]}"#,
+            r#"{"choices":[{"delta":{"content":"Got"}}]}"#,
+            r#"{"choices":[{"delta":{"content":"owe."}}]}"#,
+        ]
+        .iter()
+        .map(|line| format!("data: {}", line))
+        .collect();
+        let refs: Vec<&str> = lines.iter().map(|line| line.as_str()).collect();
+        let seen = feed_lines(&mut sse, RemoteKind::OpenAi, &refs);
+        assert_eq!(seen.len(), 5, "pięć przyrostów: {:?}", seen);
+        assert_eq!(
+            seen.iter()
+                .filter(|(channel, _)| *channel == Channel::Reasoning)
+                .count(),
+            3
+        );
+        assert_eq!(
+            seen.iter()
+                .filter(|(channel, _)| *channel == Channel::Content)
+                .count(),
+            2
+        );
+        assert_eq!(sse.reasoning, "Myślę nad tym");
+        assert_eq!(sse.content, "Gotowe.");
+        assert!(!sse.done, "bez [DONE] strumień nie jest domknięty");
+    }
+
+    #[test]
+    fn sse_without_callback_still_returns_the_whole_answer() {
+        let mut sse = Sse::default();
+        {
+            let mut on: Option<&mut dyn FnMut(Channel, &str)> = None;
+            sse.feed(
+                "data: {\"choices\":[{\"delta\":{\"reasoning\":\"myśl\"}}]}",
+                RemoteKind::OpenAi,
+                &mut on,
+            );
+            sse.feed(
+                "data: {\"choices\":[{\"delta\":{\"content\":\"Gotowe.\"}}]}",
+                RemoteKind::OpenAi,
+                &mut on,
+            );
+            sse.feed("data: [DONE]", RemoteKind::OpenAi, &mut on);
+        }
+        assert_eq!(sse.content, "Gotowe.", "wynik jak w trybie bez strumienia");
+        assert_eq!(sse.reasoning, "myśl");
+        assert!(sse.done);
+    }
+
+    #[test]
+    fn done_stops_parsing_and_garbage_lines_do_not_break_the_stream() {
+        let mut sse = Sse::default();
+        let seen = feed_lines(
+            &mut sse,
+            RemoteKind::OpenAi,
+            &[
+                "event: message",
+                "",
+                ": komentarz SSE",
+                "data: to-nie-json",
+                "data: {\"choices\":[{\"delta\":{\"content\":\"X\"}}]}",
+                "data: [DONE]",
+                "data: {\"choices\":[{\"delta\":{\"content\":\"PO-DONE\"}}]}",
+            ],
+        );
+        assert_eq!(sse.content, "X", "po [DONE] nic nie dopisujemy");
+        assert!(sse.done);
+        assert_eq!(seen.len(), 1, "śmieci nie tworzą przyrostów: {:?}", seen);
+    }
+
+    #[test]
+    fn anthropic_sse_maps_thinking_and_text_deltas() {
+        let mut sse = Sse::default();
+        let lines: Vec<String> = [
+            r#"{"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"myśl"}}"#,
+            r#"{"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":" dalej"}}"#,
+            r#"{"type":"content_block_delta","delta":{"type":"text_delta","text":"Odp"}}"#,
+            r#"{"type":"content_block_delta","delta":{"type":"text_delta","text":"owiedź"}}"#,
+            r#"{"type":"message_stop"}"#,
+        ]
+        .iter()
+        .map(|line| format!("data: {}", line))
+        .collect();
+        let refs: Vec<&str> = lines.iter().map(|line| line.as_str()).collect();
+        let seen = feed_lines(&mut sse, RemoteKind::Anthropic, &refs);
+        assert_eq!(seen.len(), 4);
+        assert_eq!(sse.reasoning, "myśl dalej");
+        assert_eq!(sse.content, "Odpowiedź");
+        assert!(sse.done, "message_stop kończy strumień");
+    }
+
+    #[test]
+    fn a_broken_stream_retries_once_without_streaming() {
+        // `Cell`, bo obie domknięcia są `FnOnce` naraz i oba liczą wywołania.
+        let calls = std::cell::Cell::new(0usize);
+        let (outcome, fell_back) = stream_with_fallback(
+            || {
+                calls.set(calls.get() + 1);
+                Err("strumien przerwany po 2 chunkach".to_string())
+            },
+            || {
+                calls.set(calls.get() + 1);
+                Ok(GOOD_FINISH.to_string())
+            },
+        );
+        assert!(fell_back, "fallback musi być oznaczony");
+        assert_eq!(calls.get(), 2, "dokładnie jedna próba bez strumienia");
+        let decision = parse_decision(&outcome.expect("retry się udał")).unwrap();
+        assert!(matches!(decision.action, Action::Finish { .. }));
+    }
+
+    #[test]
+    fn when_the_plain_retry_also_fails_the_error_carries_both_reasons() {
+        let (outcome, fell_back) = stream_with_fallback(
+            || Err("strumien przerwany: urwane".to_string()),
+            || Err("curl blad: timeout".to_string()),
+        );
+        assert!(fell_back);
+        let error = outcome.expect_err("oba transporty padły");
+        assert!(error.contains("strumien przerwany"), "{}", error);
+        assert!(error.contains("timeout"), "{}", error);
+        assert!(
+            error.contains("proba bez strumienia"),
+            "komunikat musi mówić o fallbacku: {}",
+            error
+        );
+    }
+
+    #[test]
+    fn requests_are_streaming_and_the_fallback_body_is_not() {
+        for kind in [RemoteKind::Anthropic, RemoteKind::OpenAi] {
+            let wire = remote(kind).wire("zadanie", "", &[], false);
+            let body: Value = serde_json::from_str(&wire.body).expect("ciało to JSON");
+            assert_eq!(body["stream"], true, "stream:true w żądaniu: {}", wire.body);
+            assert_eq!(body["max_tokens"], 4096);
+            let plain = wire.without_stream();
+            let body: Value = serde_json::from_str(&plain.body).expect("ciało to JSON");
+            assert_eq!(body["stream"], false, "retry bez strumienia: {}", plain.body);
+        }
+        // Nagłówek sesji OC-Go zostaje w żądaniu strumieniowym.
+        let wire = remote(RemoteKind::OpenAi).wire("zadanie", "", &[], false);
+        assert!(wire
+            .headers
+            .iter()
+            .any(|h| h == "x-opencode-session: sess-test"));
     }
 }

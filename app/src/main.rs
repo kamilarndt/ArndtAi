@@ -62,6 +62,7 @@ fn run_cli() -> i32 {
         ("--screenshot-export", shot::save_export_at),
         ("--screenshot-markdown", shot::save_markdown_at),
         ("--screenshot-markdown-40", shot::save_markdown_40_at),
+        ("--screenshot-stream", shot::save_stream_at),
     ] {
         if args
             .iter()
@@ -263,6 +264,7 @@ fn usage() {
     println!("  arndtai --screenshot-light plik.png   — zrzut motywu `jasny`");
     println!("  arndtai --screenshot-markdown plik.png — zrzut odpowiedzi w markdownie");
     println!("  arndtai --screenshot-markdown-40 plik.png 40x38 — ten sam ekran w 40 kolumnach");
+    println!("  arndtai --screenshot-stream plik.png  — blok myśli w trakcie strumienia");
     println!("  arndtai --screenshot-list plik.png    — zrzut listy sesji");
     println!("                [WxH] np. 83x38 — kadr do porownania ze zrzutem referencyjnym");
     println!();

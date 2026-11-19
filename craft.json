@@ -9,62 +9,62 @@
   "status": "ready",
   "note": "Ready: 5 checks pass; evidence in checks/evidence.json",
   "created_ms": 1794572139328,
-  "updated_ms": 1795105847593,
+  "updated_ms": 1795111323760,
   "checks": [
     {
       "round": 1,
       "check": "build",
       "passed": true,
       "similarity": null,
-      "note": "`cargo build --quiet` w app/ -> exit 0 (92 ms, sha256 e3b0c44298fc)",
+      "note": "`cargo build --quiet` w app/ -> exit 0 (60 ms, sha256 e3b0c44298fc)",
       "artifacts": [
-        "checks/1795105845045-build.log"
+        "checks/1795111321255-build.log"
       ],
-      "at_ms": 1795105845045
+      "at_ms": 1795111321255
     },
     {
       "round": 1,
       "check": "own-tests",
       "passed": true,
       "similarity": null,
-      "note": "`cargo test --quiet` w app/ -> exit 0 (1767 ms, sha256 6a89747932b2)",
+      "note": "`cargo test --quiet` w app/ -> exit 0 (1752 ms, sha256 f94976baea23)",
       "artifacts": [
-        "checks/1795105845046-own-tests.log"
+        "checks/1795111321256-own-tests.log"
       ],
-      "at_ms": 1795105845046
+      "at_ms": 1795111321256
     },
     {
       "round": 1,
       "check": "demo",
       "passed": true,
       "similarity": null,
-      "note": "`cargo run --quiet -- demo` w app/ -> exit 0 (339 ms, sha256 4e0d2689aae3)",
+      "note": "`cargo run --quiet -- demo` w app/ -> exit 0 (350 ms, sha256 4e0d2689aae3)",
       "artifacts": [
-        "checks/1795105845047-demo.log"
+        "checks/1795111321257-demo.log"
       ],
-      "at_ms": 1795105845047
+      "at_ms": 1795111321257
     },
     {
       "round": 1,
       "check": "security",
       "passed": true,
       "similarity": null,
-      "note": "`cargo test --quiet tools::tests` w app/ -> exit 0 (71 ms, sha256 c73e5d0a3908)",
+      "note": "`cargo test --quiet tools::tests` w app/ -> exit 0 (71 ms, sha256 5534435606d7)",
       "artifacts": [
-        "checks/1795105845048-security.log"
+        "checks/1795111321258-security.log"
       ],
-      "at_ms": 1795105845048
+      "at_ms": 1795111321258
     },
     {
       "round": 1,
       "check": "durability",
       "passed": true,
       "similarity": null,
-      "note": "`cargo test --quiet agent::tests` w app/ -> exit 0 (269 ms, sha256 1c506a25535d)",
+      "note": "`cargo test --quiet agent::tests` w app/ -> exit 0 (261 ms, sha256 77072e10f9c9)",
       "artifacts": [
-        "checks/1795105845049-durability.log"
+        "checks/1795111321259-durability.log"
       ],
-      "at_ms": 1795105845049
+      "at_ms": 1795111321259
     },
     {
       "round": 1,
@@ -263,13 +263,24 @@
         "checks/round-18/screenshot.png"
       ],
       "at_ms": 1795103978891
+    },
+    {
+      "round": 19,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-19/screenshot.png"
+      ],
+      "at_ms": 1795107296657
     }
   ],
   "agent_session": null,
   "agent_session_by": "hermes",
   "capture_deep": true,
   "allowed_actions": [],
-  "last_reply": "Program terminalowy ArndtAi jest gotowy: ekran sesji i lista sesji, przewijana historia zdarzeń, pole na zadanie na dole oraz pasek stanu z krokami, budżetem i odmowami, a wywołania narzędzi widać na żywo — zrzut ekranu zapisuje się jako obraz, bez otwierania okna i bez zabierania fokusu. Sprawdziłem to z prawdziwym wejściem: wpisałem zadanie w terminalu i zobaczyłem zapis pliku, odczyt i wynik, a także zachowanie przy małych i zmienianych rozmiarach ekranu. Budowanie przechodzi bez ostrzeżeń, 252 testy są zielone, demo daje 39/39, a zrzut 960×608 nie jest pusty; narzędzia sprawdzające Craft Anything nie były w tej sesji podłączone, więc te same sprawdziany uruchomiłem bezpośrednio. W tej rundzie dołożyłem dwa trwałe testy pilnujące zrzutu ekranu przez zwykłe wejście programu (domyślny i zadany rozmiar kadru oraz czytelny błąd przy braku nazwy pliku) i opisałem je w dokumentacji trybu terminalowego. Różnice względem oryginału są świadome: liczniki pokazują znaki, a nie tokeny, brak pełnych tabel i diagramów oraz przycisku zatrzymania w trakcie tury. Następny krok wart zamówienia to wyszukiwanie w pamięci albo próba na prawdziwym modelu.",
+  "last_reply": "Gotowe. Model pisze teraz myśl na żywo: tekst pojawia się w terminalu kawałek po kawałku w bloku „Thought · streaming”, a po zakończeniu kroku blok się zamyka i wygląda jak dotąd. Jeśli strumień się urwie, program raz ponawia bez strumienia, a dopiero potem zgłasza błąd; transkrypty, bramki i kontrakty zostały bez zmian, web UI nietknięte. Sprawdziłem to na lokalnej atrapie strumienia (zwykły przebieg i urwane połączenie), przeszedł build wydania, 242 testy jednostkowe, 21 integracyjnych i demo 39/39; jest też zrzut ekranu z rosnącym blokiem. Różnica: samo „myślenie” widać tylko na żywo — w zapisie sesji zostaje końcowa myśl, a nie cały strumień. Nie miałem dostępu do automatycznego porównania Craft Anything, więc wynik potwierdziłem własnymi testami i zrzutem; następnym sensownym krokiem byłby ten sam podgląd na żywo w web UI.",
   "asset_budget_usd": 0.0,
   "generate_assets": false,
   "start_files": [

@@ -138,6 +138,14 @@ pub fn save_markdown_40_at(path: &str, cols: u16, rows: u16) -> i32 {
     code
 }
 
+/// Runda 21: blok myśli rośnie w trakcie strumienia (`--screenshot-stream`).
+pub fn save_stream_at(path: &str, cols: u16, rows: u16) -> i32 {
+    let workspace = PathBuf::from(".agent").join("screenshot-ws");
+    let code = render_png(tui::stream_shot(workspace.clone()), path, cols, rows);
+    let _ = fs::remove_dir_all(&workspace);
+    code
+}
+
 /// Ekran startowy (lista sesji) na prawdziwych transkryptach z `.agent/sessions`
 /// bieżącego workspace'u. Niczego nie tworzy i nie kasuje.
 pub fn save_list_at(path: &str, cols: u16, rows: u16) -> i32 {

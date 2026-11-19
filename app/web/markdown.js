@@ -702,5 +702,5 @@
     return frag;
   }
 
-  global.ArndtMarkdown = { render, inlineText: (text) => inlineSegments(String(text), "", 0) };
+  global.ArndtMarkdown = { render };
 })(typeof window !== "undefined" ? window : this);

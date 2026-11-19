@@ -58,3 +58,16 @@ po SIGKILL, Python core (ADR-004).
   `app/shots/live-v01b-sesja.jsonl`.
 - README przepisany pod użytkownika (instalacja, pierwsze zadanie, ograniczenia).
 - ADR-004 zamknięty: rdzeń zostaje w Rust.
+
+## Audyt ustaleń (2026-11-19)
+
+`docs/audits/spec-gap-2026-11-19.md` — 79 wymagań z `craft-anything-input/00-09`:
+DONE 36, CZĘŚĆ 24, BRAK 18. Domknięte tego dnia:
+
+- kontrakt eventów **v2** z `gate` (G18) — trajectory ma etapy bramek;
+- `personality/base.md` i `skills/przyklad/SKILL.md` w repo (A08) — `ardntai skills`
+  widzi osobowość z pliku i 1 skill (647 B, lista w promptcie: 70 znaków);
+- single-writer: ADR-001 nowelizacja (A19) — perimetr MCP jako świadomy wyjątek
+  ograniczony do tabeli `steps`.
+
+Otwarte: web control (`POST /run`), pamięć Pro/Ultra, proaktywność.

@@ -25,3 +25,7 @@ app/raport.txt
 # Logi dowodow sa generowane przy kazdym `make verify`; w historii trzymamy
 # evidence.json i zrzuty, nie timestampowane logi.
 checks/*.log
+
+# Python bytecode z generatora fixture (app/web/)
+__pycache__/
+*.pyc

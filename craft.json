@@ -9,62 +9,62 @@
   "status": "ready",
   "note": "Ready: 5 checks pass; evidence in checks/evidence.json",
   "created_ms": 1794572139328,
-  "updated_ms": 1795111581301,
+  "updated_ms": 1795112104266,
   "checks": [
     {
       "round": 1,
       "check": "build",
       "passed": true,
       "similarity": null,
-      "note": "`cargo build --quiet` w app/ -> exit 0 (58 ms, sha256 e3b0c44298fc)",
+      "note": "`cargo build --quiet` w app/ -> exit 0 (57 ms, sha256 e3b0c44298fc)",
       "artifacts": [
-        "checks/1795111578336-build.log"
+        "checks/1795112101282-build.log"
       ],
-      "at_ms": 1795111578336
+      "at_ms": 1795112101282
     },
     {
       "round": 1,
       "check": "own-tests",
       "passed": true,
       "similarity": null,
-      "note": "`cargo test --quiet` w app/ -> exit 0 (1975 ms, sha256 650936232700)",
+      "note": "`cargo test --quiet` w app/ -> exit 0 (1979 ms, sha256 4701318113ec)",
       "artifacts": [
-        "checks/1795111578337-own-tests.log"
+        "checks/1795112101283-own-tests.log"
       ],
-      "at_ms": 1795111578337
+      "at_ms": 1795112101283
     },
     {
       "round": 1,
       "check": "demo",
       "passed": true,
       "similarity": null,
-      "note": "`cargo run --quiet -- demo` w app/ -> exit 0 (482 ms, sha256 4e0d2689aae3)",
+      "note": "`cargo run --quiet -- demo` w app/ -> exit 0 (476 ms, sha256 4e0d2689aae3)",
       "artifacts": [
-        "checks/1795111578338-demo.log"
+        "checks/1795112101284-demo.log"
       ],
-      "at_ms": 1795111578338
+      "at_ms": 1795112101284
     },
     {
       "round": 1,
       "check": "security",
       "passed": true,
       "similarity": null,
-      "note": "`cargo test --quiet tools::tests` w app/ -> exit 0 (63 ms, sha256 b4698bd609b2)",
+      "note": "`cargo test --quiet tools::tests` w app/ -> exit 0 (65 ms, sha256 b4698bd609b2)",
       "artifacts": [
-        "checks/1795111578339-security.log"
+        "checks/1795112101285-security.log"
       ],
-      "at_ms": 1795111578339
+      "at_ms": 1795112101285
     },
     {
       "round": 1,
       "check": "durability",
       "passed": true,
       "similarity": null,
-      "note": "`cargo test --quiet agent::tests` w app/ -> exit 0 (378 ms, sha256 adfe5672701c)",
+      "note": "`cargo test --quiet agent::tests` w app/ -> exit 0 (397 ms, sha256 c54f371c67c5)",
       "artifacts": [
-        "checks/1795111578340-durability.log"
+        "checks/1795112101286-durability.log"
       ],
-      "at_ms": 1795111578340
+      "at_ms": 1795112101286
     },
     {
       "round": 1,
@@ -274,13 +274,24 @@
         "checks/round-19/screenshot.png"
       ],
       "at_ms": 1795107296657
+    },
+    {
+      "round": 20,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-20/screenshot.png"
+      ],
+      "at_ms": 1795111799216
     }
   ],
   "agent_session": null,
   "agent_session_by": "hermes",
   "capture_deep": true,
   "allowed_actions": [],
-  "last_reply": "Gotowe. Model pisze teraz myśl na żywo: tekst pojawia się w terminalu kawałek po kawałku w bloku „Thought · streaming”, a po zakończeniu kroku blok się zamyka i wygląda jak dotąd. Jeśli strumień się urwie, program raz ponawia bez strumienia, a dopiero potem zgłasza błąd; transkrypty, bramki i kontrakty zostały bez zmian, web UI nietknięte. Sprawdziłem to na lokalnej atrapie strumienia (zwykły przebieg i urwane połączenie), przeszedł build wydania, 242 testy jednostkowe, 21 integracyjnych i demo 39/39; jest też zrzut ekranu z rosnącym blokiem. Różnica: samo „myślenie” widać tylko na żywo — w zapisie sesji zostaje końcowa myśl, a nie cały strumień. Nie miałem dostępu do automatycznego porównania Craft Anything, więc wynik potwierdziłem własnymi testami i zrzutem; następnym sensownym krokiem byłby ten sam podgląd na żywo w web UI.",
+  "last_reply": "Zbudowałem i sprawdziłem tryb terminalowy ArndtAi: ekran startowy z listą sesji, historia przebiegu (zadanie, myśli, wywołania narzędzi z wynikami, odmowy bramek), pole na zadanie na dole i pasek statusu z krokami, budżetem i stanem końcowym.\n\nKomendy wychodzą z kodem 0, przechodzi 242 testy jednostkowe i 22 integracyjne, demo daje 39/39, a w prawdziwym terminalu wpisane zadanie zapisało plik i pokazało wywołanie narzędzia razem z wynikiem i statusem DONE.\n\nZrzut ekranu rysuje 120 klatek i zapisuje niepusty obraz 960×608, także podana ścieżka z brakiem pliku kończy się czytelnym błędem i kodem 2; bez terminala tryb TUI nie wisi, tylko wypisuje instrukcję.\n\nKontrakt zdarzeń, magazyn i pętla zostały nietknięte, web UI nie powstało; różnica wobec oryginału Grok Build jest taka, że nie mam go na tej maszynie do porównania, więc wzorowałem się na notatce z analizy, a podglądu sesji, renderowania markdown i przełączania motywów świadomie nie ma w tej wersji.\n\nNajsensowniejszy następny krok to podgląd zaznaczonej sesji bez wchodzenia w nią albo skrót wznawiający ostatnie zadanie.",
   "asset_budget_usd": 0.0,
   "generate_assets": false,
   "start_files": [

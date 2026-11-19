@@ -60,6 +60,23 @@ tworzy `fixture-md.jsonl` (9 linii): `task` i `tool_result` z dosłownym `**`,
 dłuższą niż 120 znaków, `thought` z niepełnym markdownem, `thought` z blokiem
 205 linii (dowód obcięcia) oraz `summary` z markdownem w `reason`.
 
+## Tryb z uruchamianiem zadań (v0.3)
+
+Statyczna strona tylko czyta. Żeby wysłać zadanie z przeglądarki, uruchom serwer
+z katalogu repo:
+
+```sh
+python3 app/web/serve.py --workspace /tmp/ws --port 8766 \
+  --bin ./app/target/debug/ardntai
+# otwórz http://127.0.0.1:8766/web/
+```
+
+Serwer binduje wyłącznie `127.0.0.1`, przyjmuje jedno zadanie naraz (`409`),
+a binarkę uruchamia jako proces potomny — rdzeń zostaje bez zależności HTTP.
+Endpointy: `GET /api/sessions`, `GET /api/sessions/<id>?since=N`,
+`GET /api/status`, `POST /api/run` `{"task": "...", "resume": false}`,
+`POST /api/stop`.
+
 ## Co robi
 
 - **Lista sesji** z `.agent/sessions/*.jsonl`, najnowsze pierwsze: id pliku,

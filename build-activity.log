@@ -404,3 +404,20 @@
 16:54:56 done  Check app-screenshot: The program starts and draws (960×608).
 16:54:56 stage Ready: all 2 checks pass.
 16:54:56 stage Ready: all 2 checks pass.
+--- Craft Anything 0.6.1: a run started 2026-11-19 18:06:21 UTC ---
+18:06:21 stage Getting the builder ready…
+18:06:21 stage Improving the build…
+18:06:22 note  Asking Hermes Agent…
+18:09:58 said  Zbudowałem i sprawdziłem tryb terminalowy ArndtAi: ekran startowy z listą sesji, historia przebiegu (zadanie, myśli, wywołania narzędzi z wynikami, odmowy bramek), pole na zadanie na dole i pasek statusu z krokami, budżetem i stanem końcowym.
+18:09:58 said  Komendy wychodzą z kodem 0, przechodzi 242 testy jednostkowe i 22 integracyjne, demo daje 39/39, a w prawdziwym terminalu wpisane zadanie zapisało plik i pokazało wywołanie narzędzia razem z wynikiem i statusem DONE.
+18:09:58 said  Zrzut ekranu rysuje 120 klatek i zapisuje niepusty obraz 960×608, także podana ścieżka z brakiem pliku kończy się czytelnym błędem i kodem 2; bez terminala tryb TUI nie wisi, tylko wypisuje instrukcję.
+18:09:58 said  Kontrakt zdarzeń, magazyn i pętla zostały nietknięte, web UI nie powstało; różnica wobec oryginału Grok Build jest taka, że nie mam go na tej maszynie do porównania, więc wzorowałem się na notatce z analizy, a podglądu sesji, renderowania markdown i przełączania motywów świadomie nie ma w tej wersji.
+18:09:58 said  Najsensowniejszy następny krok to podgląd zaznaczonej sesji bez wchodzenia w nią albo skrót wznawiający ostatnie zadanie.
+18:09:58 note  The builder's turn ended (0 tokens in, 0 out)
+18:09:58 stage Checking the build…
+18:09:58 stage Checking the build (1 of 2): build…
+18:09:58 stage Checking the build (2 of 2): app-screenshot…
+18:09:59 done  Check build: Build succeeded.
+18:09:59 done  Check app-screenshot: The program starts and draws (960×608).
+18:09:59 stage Ready: all 2 checks pass.
+18:09:59 stage Ready: all 2 checks pass.

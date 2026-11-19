@@ -115,3 +115,10 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   CWD: app
   EVIDENCE: 2026-11-19 — `app/src/agent.rs` pisze `kind: "gate"` z `stage` i `detail` na 8 etapach (RECEIVED, PLANNING, STEP_PROPOSED, SCOPE_CHECK, POLICY_CHECK, EXECUTING, OBSERVE, STOP_CHECK); test `tests/cli.rs::gate_stages_are_written_to_the_transcript` sprawdza obecność i kolejność. TUI ignoruje `gate` (telemetria, testy TUI zielone), web UI rysuje wiersz GATE (sprawdzone w Orca browser: 1 wiersz, 13/13 typów, konsola czysta). Fixture: `python3 app/web/fixture_events.py --out /tmp/fx-gate` → 13 linii.
   NOTE: `docs/contracts/events.md` podniesiony do v2; konsument v1 czyta dalej (nieznany `kind` pomija).
+
+- [x] G19: v0.3 — zadanie uruchamiane z web UI (serwer w Pythonie, rdzeń bez zmian)
+  CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
+  EXPECT: 242 unit + 22 integration, exit 0; demo 39/39
+  CWD: app
+  EVIDENCE: 2026-11-19 — `app/web/serve.py` (stdlib: http.server, subprocess), bind 127.0.0.1; `POST /api/run` uruchamia `ardntai run -w … --provider mock`, zwraca session id, `GET /api/status`, `POST /api/stop`, `GET /api/sessions`; `/.agent/sessions/<id>.jsonl` z Range (tail). Zmierzone: `POST {"task":"write a.txt :: z-web"}` → DONE, plik `a.txt`; drugi POST w trakcie → **409**; `POST {"task":"../../etc/passwd"}` → traktowane jako treść, brak odczytu plików; UI: formularz u góry, 6 sesji, 17 wierszy z 10 `GATE`, konsola bez wpisów; zrzut `app/shots/v0.3-web-run.png`. `app/Cargo.toml` bez nowych zależności.
+  NOTE: bez serwera (samo `python3 -m http.server`) UI działa jak w v0.1: tylko odczyt, kontrolki wyłączone.

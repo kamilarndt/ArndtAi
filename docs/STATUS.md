@@ -71,3 +71,11 @@ DONE 36, CZĘŚĆ 24, BRAK 18. Domknięte tego dnia:
   ograniczony do tabeli `steps`.
 
 Otwarte: web control (`POST /run`), pamięć Pro/Ultra, proaktywność.
+
+## v0.3 (2026-11-19)
+
+- `app/web/serve.py` — serwer UI (Python, stdlib): `POST /api/run`, `--resume`,
+  `POST /api/stop`, `GET /api/status`, `GET /api/sessions`, tail po `Range`.
+- UI: pole zadania + `Uruchom`/`Zatrzymaj`, status biegu, auto-wybór nowej sesji.
+- Bezpieczeństwo: bind 127.0.0.1, jedno zadanie naraz (409), treść zadania nie
+  jest ścieżką. Rdzeń (`app/src/`) i `Cargo.toml` nietknięte.

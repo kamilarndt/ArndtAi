@@ -276,6 +276,26 @@ function el(tag, cls, text) {
 /* ── lista sesji ────────────────────────────────────────────────────── */
 
 async function fetchListing() {
+  // v0.3: serwer `app/web/serve.py` ma `/api/sessions`; statyczny
+  // `python3 -m http.server` nie ma — wtedy zostaje listing katalogu.
+  try {
+    const api = await fetch("/api/sessions", { cache: "no-store" });
+    if (api.ok) {
+      const body = await api.json();
+      state.listingOk = true;
+      return (body.sessions || []).map((s) => ({
+        id: safeId(s.id + ".jsonl"),
+        name: s.id + ".jsonl",
+        size: s.size ?? null,
+        mtime: null,
+        task: s.task || "",
+        status: s.status || "brak",
+        lastAt: s.lastAt || 0,
+      }));
+    }
+  } catch {
+    // brak API — schodzimy do listingu poniżej
+  }
   let res;
   try {
     res = await fetch(ENDPOINT, { cache: "no-store" });

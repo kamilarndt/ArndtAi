@@ -36,7 +36,7 @@ html, body {
 
 body {
   display: grid;
-  grid-template-rows: 44px 1fr 26px;
+  grid-template-rows: 44px auto 1fr 26px;
   background: var(--bg);
   color: var(--fg);
   font-family: var(--mono);
@@ -764,3 +764,39 @@ mark {
 @media (prefers-reduced-motion: reduce) {
   .pulse { transition: none; }
 }
+
+/* v0.3: pasek uruchamiania zadania (serwer app/web/serve.py) */
+.runner {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid #2a2a2a;
+  background: #1b1b1b;
+  font: inherit;
+}
+.runner input {
+  flex: 1 1 auto;
+  min-width: 12ch;
+  padding: 8px 10px;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: #141414;
+  color: #e6e6e6;
+  font: inherit;
+}
+.runner input:focus { outline: 1px solid #ff5fd2; border-color: #ff5fd2; }
+.runner button {
+  padding: 8px 14px;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: #242424;
+  color: #e6e6e6;
+  font: inherit;
+  cursor: pointer;
+}
+.runner button[type="submit"] { border-color: #ff5fd2; color: #ffd7f2; }
+.runner button:disabled { opacity: .5; cursor: default; }
+.runner-status { color: #8a8a8a; font-size: 12px; white-space: nowrap; }
+.runner-status.ok { color: #4ec9b0; }
+.runner-status.err { color: #f14c4c; }

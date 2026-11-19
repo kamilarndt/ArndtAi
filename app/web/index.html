@@ -19,6 +19,13 @@
   </div>
 </header>
 
+<form class="runner" id="runner" autocomplete="off">
+  <input id="task" type="text" placeholder="Nowe zadanie dla agenta… (np. write a.txt :: tresc)" aria-label="Treść zadania">
+  <button id="run" type="submit">Uruchom</button>
+  <button id="stop" type="button" class="ghost" hidden>Zatrzymaj</button>
+  <span class="runner-status" id="runner-status"></span>
+</form>
+
 <main class="layout">
   <aside class="sidebar" aria-label="Lista sesji">
     <div class="panel-head">
@@ -71,5 +78,6 @@
 
 <script src="markdown.js"></script>
 <script src="app.js"></script>
+<script src="runner.js"></script>
 </body>
 </html>

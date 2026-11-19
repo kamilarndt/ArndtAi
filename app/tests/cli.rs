@@ -858,3 +858,297 @@ fn skill_load_outside_the_list_is_not_found() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+// ── M1: utrata procesu w środku pracy (kill -9) ────────────────────────────
+//
+// Sygnał nie daje procesowi szansy na posprzątanie: ginie bufor, transakcja
+// i perimetr. Kontrakt (`docs/contracts/events.md`) mówi, że krok `proposed`
+// bez wyniku po wznowieniu jest `abandoned` i nie wykonuje się drugi raz,
+// a krok `done` idzie z zapisanego wyniku. Do tej pory pilnowały tego testy
+// jednostkowe; te dwa widzą to na prawdziwej binarce i prawdziwym SIGKILL.
+
+/// Uruchamia binarkę jako dziecko (bez czekania), z tym samym czyszczeniem
+/// środowiska co `run_env`, żeby żaden prawdziwy klucz nie wyciekł do testu.
+fn spawn_bin(
+    dir: &Path,
+    args: &[&str],
+    envs: &[(&str, &str)],
+) -> std::process::Child {
+    let mut cmd = Command::new(bin_path());
+    cmd.args(args)
+        .current_dir(dir)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .env_remove("ANTHROPIC_API_KEY")
+        .env_remove("OPENAI_API_KEY")
+        .env_remove("ARNDTAI_API_KEY")
+        .env_remove("ARNDTAI_BASE_URL")
+        .env_remove("ARNDTAI_MODEL");
+    for (key, value) in envs {
+        cmd.env(key, value);
+    }
+    cmd.spawn().expect("binarka arndtai powinna sie uruchomic")
+}
+
+/// To samo co `run_env`, ale z limitem czasu: proces, który zawisł na
+/// niepominiętym kroku, daje czytelny błąd zamiast wiszącego `cargo test`.
+fn run_env_within(
+    dir: &Path,
+    args: &[&str],
+    envs: &[(&str, &str)],
+    limit: std::time::Duration,
+) -> Out {
+    let mut cmd = Command::new(bin_path());
+    cmd.args(args)
+        .current_dir(dir)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .env_remove("ANTHROPIC_API_KEY")
+        .env_remove("OPENAI_API_KEY")
+        .env_remove("ARNDTAI_API_KEY")
+        .env_remove("ARNDTAI_BASE_URL")
+        .env_remove("ARNDTAI_MODEL");
+    for (key, value) in envs {
+        cmd.env(key, value);
+    }
+    let mut child = cmd.spawn().expect("binarka arndtai powinna sie uruchomic");
+    let started = std::time::Instant::now();
+    loop {
+        match child.try_wait().expect("try_wait") {
+            Some(status) => {
+                let mut stdout = String::new();
+                let mut stderr = String::new();
+                if let Some(mut pipe) = child.stdout.take() {
+                    let _ = pipe.read_to_string(&mut stdout);
+                }
+                if let Some(mut pipe) = child.stderr.take() {
+                    let _ = pipe.read_to_string(&mut stderr);
+                }
+                return Out {
+                    stdout,
+                    stderr,
+                    code: status.code().unwrap_or(-1),
+                };
+            }
+            None if started.elapsed() > limit => {
+                let _ = child.kill();
+                let _ = child.wait();
+                panic!(
+                    "proces nie skonczyl w {:?} — krok nie zostal pominiety",
+                    limit
+                );
+            }
+            None => std::thread::sleep(std::time::Duration::from_millis(20)),
+        }
+    }
+}
+
+/// Czeka, aż transkrypt sesji zawiera fragment. Panikuje po `timeout`, bo
+/// test, który wisi, nie mówi nic o przyczynie.
+fn wait_for_transcript(dir: &Path, needle: &str, timeout: std::time::Duration) {
+    let started = std::time::Instant::now();
+    loop {
+        if transcript(dir).contains(needle) {
+            return;
+        }
+        if started.elapsed() > timeout {
+            panic!(
+                "transkrypt nie zawiera {:?} po {:?}:\n{}",
+                needle,
+                timeout,
+                transcript(dir)
+            );
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+}
+
+/// Model, który odpowiada na pierwsze żądanie, a na drugie nie odpowiada
+/// wcale — proces zostaje zablokowany na czytaniu odpowiedzi providera.
+/// Tak wygląda prawdziwa utrata procesu w środku tury.
+fn fake_model_then_hang(answer: String) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("wolny port na localhost");
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        if let Ok((mut stream, _)) = listener.accept() {
+            let _ = read_http_request(&mut stream);
+            let body = serde_json::json!({
+                "choices": [{ "message": { "content": answer } }]
+            })
+            .to_string();
+            let head = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            let _ = stream.write_all(head.as_bytes());
+            let _ = stream.write_all(body.as_bytes());
+            let _ = stream.flush();
+        }
+        if let Ok((mut stream, _)) = listener.accept() {
+            let _ = read_http_request(&mut stream);
+            // Milczy do konca testu: proces czeka na odpowiedz, az go zabijemy.
+            std::thread::sleep(std::time::Duration::from_secs(30));
+            drop(stream);
+        }
+    });
+    format!("http://{}", addr)
+}
+
+/// Krok `done` nie może wykonać się drugi raz po restarcie: plik zostaje
+/// z jedną porcją treści, a krok wraca z zapisanego wyniku (`cached`).
+#[test]
+fn killing_the_process_while_the_model_thinks_does_not_repeat_the_step() {
+    let dir = temp_dir("kill-model");
+    let ws = dir.join("ws");
+    std::fs::create_dir_all(&ws).unwrap();
+    let append = "{\"thought\":\"dopisuje\",\"tool\":\"fs.append\",\"args\":{\"path\":\"a.txt\",\"content\":\"raz\"}}";
+    let base = fake_model_then_hang(append.to_string());
+    let mut child = spawn_bin(
+        &ws,
+        &["run", "dopisz raz", "--provider", "openai", "--no-mcp", "-q"],
+        &[
+            ("ARNDTAI_API_KEY", "test-key"),
+            ("ARNDTAI_BASE_URL", base.as_str()),
+        ],
+    );
+
+    wait_for_transcript(
+        &ws,
+        "\"kind\":\"tool_result\"",
+        std::time::Duration::from_secs(10),
+    );
+    // Krok jest `done`, a proces czeka na drugą odpowiedź modelu — tu ginie.
+    child.kill().expect("SIGKILL na dziecku");
+    let _ = child.wait();
+    assert_eq!(
+        std::fs::read_to_string(ws.join("a.txt")).unwrap(),
+        "raz",
+        "efekt kroku jest zapisany przed zabiciem"
+    );
+
+    // Plik chowamy: gdyby wznowienie wykonało krok ponownie, `a.txt` powstałby
+    // od nowa. To jedyny sposób, by odróżnić powtórkę od zapisanego wyniku.
+    std::fs::rename(ws.join("a.txt"), ws.join("a.txt.bak")).unwrap();
+
+    let (resume_base, _) = fake_model(vec![append.to_string(), FINISH_ANSWER.to_string()]);
+    let out = run_env_within(
+        &ws,
+        &[
+            "run",
+            "dopisz raz",
+            "--provider",
+            "openai",
+            "--no-mcp",
+            "--resume",
+            "-q",
+        ],
+        &[
+            ("ARNDTAI_API_KEY", "test-key"),
+            ("ARNDTAI_BASE_URL", resume_base.as_str()),
+        ],
+        std::time::Duration::from_secs(30),
+    );
+    assert_eq!(
+        out.code, 0,
+        "wznowienie ma się skończyć DONE, stdout:\n{}\nstderr:\n{}",
+        out.stdout, out.stderr
+    );
+    assert!(
+        !ws.join("a.txt").exists(),
+        "krok `done` nie może wykonać efektu drugi raz (at-most-once):\n{}",
+        transcript(&ws)
+    );
+    assert_eq!(
+        std::fs::read_to_string(ws.join("a.txt.bak")).unwrap(),
+        "raz",
+        "efekt z pierwszego biegu zostaje nietknięty"
+    );
+    assert!(
+        transcript(&ws).contains("\"kind\":\"tool_result_cached\""),
+        "wznowienie ma wziąć wynik z zapisanego kroku:\n{}",
+        transcript(&ws)
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Krok `proposed` bez wyniku (proces zabity w środku narzędzia) po
+/// wznowieniu jest `abandoned`: zero powtórzenia efektu, a tura idzie dalej.
+/// FIFO jest tu narzędziem: `fs.read` otwiera je do czytania i czeka na
+/// pisarza, więc proces naprawdę ginie „w środku" narzędzia, nie po nim.
+#[test]
+fn killing_the_process_inside_the_tool_leaves_the_step_abandoned() {
+    let dir = temp_dir("kill-tool");
+    let ws = dir.join("ws");
+    std::fs::create_dir_all(&ws).unwrap();
+    let fifo = ws.join("cel.txt");
+    let made = Command::new("mkfifo")
+        .arg(&fifo)
+        .status()
+        .expect("mkfifo powinien byc dostepny");
+    assert!(made.success(), "mkfifo musi utworzyc fifo");
+
+    let (base, _) = fake_model(vec![
+        "{\"thought\":\"czytam\",\"tool\":\"fs.read\",\"args\":{\"path\":\"cel.txt\"}}".to_string(),
+    ]);
+    let mut child = spawn_bin(
+        &ws,
+        &["run", "zapisz", "--provider", "openai", "--no-mcp", "-q"],
+        &[
+            ("ARNDTAI_API_KEY", "test-key"),
+            ("ARNDTAI_BASE_URL", base.as_str()),
+        ],
+    );
+    wait_for_transcript(
+        &ws,
+        "\"kind\":\"tool_call\"",
+        std::time::Duration::from_secs(10),
+    );
+    // Zaraz po `tool_call` narzędzie blokuje się na FIFO; krok jest `proposed`.
+    child.kill().expect("SIGKILL na dziecku");
+    let _ = child.wait();
+
+    // Ten sam krok jeszcze raz, a potem koniec: przerwany `proposed` musi
+    // zostać pominięty, zamiast czekać drugi raz na FIFO.
+    let (resume_base, _) = fake_model(vec![
+        "{\"thought\":\"czytam\",\"tool\":\"fs.read\",\"args\":{\"path\":\"cel.txt\"}}".to_string(),
+        FINISH_ANSWER.to_string(),
+    ]);
+    let out = run_env_within(
+        &ws,
+        &[
+            "run",
+            "zapisz",
+            "--provider",
+            "openai",
+            "--no-mcp",
+            "--resume",
+            "-q",
+        ],
+        &[
+            ("ARNDTAI_API_KEY", "test-key"),
+            ("ARNDTAI_BASE_URL", resume_base.as_str()),
+        ],
+        std::time::Duration::from_secs(30),
+    );
+    let both = format!("{}\n{}", out.stdout, out.stderr);
+    assert_eq!(out.code, 0, "wznowienie ma przejsc:\n{}", both);
+    let text = transcript(&ws);
+    assert!(
+        text.contains("\"kind\":\"tool_result_skipped\""),
+        "krok przerwany przed wynikiem ma byc pominiety:\n{}",
+        text
+    );
+    assert!(
+        text.contains("crash_before_result"),
+        "pominiecie ma powod `crash_before_result`:\n{}",
+        text
+    );
+    assert!(
+        !text.contains("\"kind\":\"tool_result\""),
+        "zabity krok nie moze wykonac sie drugi raz:\n{}",
+        text
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

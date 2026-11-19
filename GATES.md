@@ -87,3 +87,10 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   EVIDENCE: 231 unit + 15 integration, exit 0; demo 39/39; `docs/re/tui-parity.md` tabela stanu; zrzuty `app/shots/{r14-*,settings,ask,light,r16-skill,r17-*,markdown*}.png` (960×608 i 40 kolumn); `/export` na żywo → `eksport-20261114-0242.md` z nagłówkiem i krokami; `/copy` → `skopiowano 65 znakow (OSC 52)`; `skill.load` na żywo → `215 bajtow`, raport z datą 2026-11-14
   NOTE: nie obejmuje voice/share/plugin/workflow/dashboard/subagentów — wymagają runtime'u Groka
   NOTE: 2026-11-19 — po dodaniu testu backfillu FTS komenda bramki daje 232 unit (15 integration bez zmian); demo 39/39.
+
+- [x] G15: utrata procesu w środku pracy (kill -9) nie powtarza efektu
+  CHECK: cd app && cargo test --test cli killing_the_process
+  EXPECT: 2 passed; 0 failed — `killing_the_process_while_the_model_thinks_does_not_repeat_the_step` i `killing_the_process_inside_the_tool_leaves_the_step_abandoned`
+  CWD: app
+  EVIDENCE: 2026-11-19, exit 0, 2/2 zielone. Krok `done` wraca z zapisanego wyniku (`tool_result_cached`, plik nietknięty), krok `proposed` bez wyniku jest `abandoned` (`tool_result_skipped`, `crash_before_result`). Mutanty: `same=false` → test 1 czerwony; `abandoned=false` → test 2 czerwony (proces wisi na FIFO, limit 30 s go ubija).
+  NOTE: oba testy idą ścieżką rdzenia (`--no-mcp`). Ścieżka perimetru MCP (domyślna) po SIGKILL wykonuje krok `done` drugi raz — znalezione przy tych testach, do naprawy osobno.

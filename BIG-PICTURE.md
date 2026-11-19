@@ -32,7 +32,7 @@ Nie znaleziono — brak pomiaru (kolumna „Sygnał" nie istnieje bez git).
 ## Co dalej
 
 - Faza C, web UI — źródło: `docs/STATUS.md` (M1, poz. 1).
-- Testy `kill -9` (utrata procesu w środku narzędzia) — źródło: `docs/STATUS.md` (M1, poz. 2).
+- Perimetr MCP po `SIGKILL` wykonuje krok `done` drugi raz (znalezione testami 19 lis; rdzeń `--no-mcp` poprawny) — źródło: `GATES.md` G15, nota.
 - Python core (ADR-004, status Proposed) — źródło: `docs/STATUS.md` (M1, poz. 3).
 - Repozytorium git — źródło: `docs/STATUS.md` (M1, poz. 4): `app/` ma 984 MB, brak historii zmian.
 - Render markdown w `/export` i `/copy` — źródło: raport builda runda 18 (`build-activity.log`, 14 lis 03:09), „następny krok wart zlecenia".

@@ -27,6 +27,7 @@ const KINDS = [
   "error",
   "summary",
   "repair",
+  "gate",
 ];
 
 const KIND_LABEL = {
@@ -941,6 +942,15 @@ function buildRow(ev, idx) {
         appendMarkdown(reason, String(d.reason), "ev-reason-md");
         body.appendChild(reason);
       }
+      break;
+    }
+    case "gate": {
+      // Kontrakt v2: przejście bramki (telemetria, nie rozmowa).
+      const stage = d.stage || "gate";
+      head(body, "gate", d.detail ? String(d.detail) : null);
+      const text = el("p", "ev-text gate-line");
+      appendText(text, stage);
+      body.appendChild(text);
       break;
     }
     case "repair": {

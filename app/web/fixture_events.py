@@ -35,6 +35,7 @@ KINDS = [
     "error",
     "summary",
     "repair",
+    "gate",
 ]
 
 
@@ -60,6 +61,7 @@ def core_events(base: int) -> list[dict[str, Any]]:
         }),
         ev(8, "store_error", {"stage": "write", "message": "database is locked (busy_timeout 5000 ms)"}),
         ev(9, "repair", {"step": 4, "detail": 'proba 1/2: brak konca JSON-a; ogon: "..."'}),
+        ev(10, "gate", {"stage": "POLICY_CHECK", "detail": "notify.send"}),
         ev(10, "error", {"message": "model zwrocil niepoprawny JSON po jednej naprawie"}),
         ev(11, "summary", {
             "status": "FAILED_ERROR", "steps": 4, "tool_calls": 1, "denied": 1,

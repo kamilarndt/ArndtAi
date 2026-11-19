@@ -108,3 +108,10 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   CWD: repo
   EVIDENCE: 2026-11-19 — `cargo install` → 4,25 MB binarka; `--version` → `ardntai 0.1.0` (flaga dodana tego dnia; wcześniej była traktowana jak treść zadania). Czysty workspace `/tmp/live-v01b`, realny model `mimo-v2.6-flash` przez OC-Go: `Status: DONE, kroki 3, narzędzia 2, odmowy 0, dryf 0`, `one.txt` = `alfa` (4 B), transkrypt `app/shots/live-v01b-sesja.jsonl` (task → 2× tool_call/tool_result → summary). Perimetr `mcp`.
   NOTE: nie uruchamiałem `scripts/live_test.py` (wymaga `pyte`, brak w systemie) — dowód TUI na żywo pochodzi z 14 listopada; ten przebieg to CLI na release.
+
+- [x] G18: kontrakt eventów v2 — przejścia bramek w transkrypcie
+  CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
+  EXPECT: 242 unit + 22 integration, exit 0; demo 39/39
+  CWD: app
+  EVIDENCE: 2026-11-19 — `app/src/agent.rs` pisze `kind: "gate"` z `stage` i `detail` na 8 etapach (RECEIVED, PLANNING, STEP_PROPOSED, SCOPE_CHECK, POLICY_CHECK, EXECUTING, OBSERVE, STOP_CHECK); test `tests/cli.rs::gate_stages_are_written_to_the_transcript` sprawdza obecność i kolejność. TUI ignoruje `gate` (telemetria, testy TUI zielone), web UI rysuje wiersz GATE (sprawdzone w Orca browser: 1 wiersz, 13/13 typów, konsola czysta). Fixture: `python3 app/web/fixture_events.py --out /tmp/fx-gate` → 13 linii.
+  NOTE: `docs/contracts/events.md` podniesiony do v2; konsument v1 czyta dalej (nieznany `kind` pomija).

@@ -1225,6 +1225,62 @@ fn killing_the_process_inside_the_tool_leaves_the_step_abandoned() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Kontrakt eventow v2: kazde przejscie bramki zostawia `kind: "gate"` w JSONL.
+#[test]
+fn gate_stages_are_written_to_the_transcript() {
+    let gate_dir = temp_dir("gates");
+    let (gate_base, _) = fake_model(vec![
+        r#"{"thought":"pisze","tool":"fs.write","args":{"path":"a.txt","content":"x"}}"#
+            .to_string(),
+        r#"{"thought":"gotowe","finish":"x zapisany"}"#.to_string(),
+    ]);
+    let out = run_env_within(
+        &gate_dir,
+        &[
+            "run",
+            "zapis a.txt",
+            "-w",
+            gate_dir.to_str().unwrap(),
+            "--provider",
+            "openai",
+        ],
+        &[
+            ("ARNDTAI_API_KEY", "test-key"),
+            ("ARNDTAI_BASE_URL", gate_base.as_str()),
+        ],
+        std::time::Duration::from_secs(30),
+    );
+    assert_eq!(out.code, 0, "stdout: {}\nstderr: {}", out.stdout, out.stderr);
+    let text = transcript(&gate_dir);
+    let mut stages = Vec::new();
+    for line in text.lines() {
+        let ev: serde_json::Value = serde_json::from_str(line).expect("linia JSON");
+        if ev["kind"] == "gate" {
+            stages.push(ev["data"]["stage"].as_str().unwrap_or("?").to_string());
+        }
+    }
+    for want in [
+        "RECEIVED",
+        "PLANNING",
+        "STEP_PROPOSED",
+        "SCOPE_CHECK",
+        "POLICY_CHECK",
+        "EXECUTING",
+        "OBSERVE",
+        "STOP_CHECK",
+    ] {
+        assert!(
+            stages.iter().any(|s| s == want),
+            "brak etapu {want} w transkrypcie; sa: {stages:?}"
+        );
+    }
+    let pos = |name: &str| stages.iter().position(|s| s == name).unwrap();
+    assert!(pos("STEP_PROPOSED") < pos("POLICY_CHECK"), "kolejnosc: {stages:?}");
+    assert!(pos("POLICY_CHECK") < pos("EXECUTING"), "kolejnosc: {stages:?}");
+    assert!(pos("EXECUTING") < pos("OBSERVE"), "kolejnosc: {stages:?}");
+    let _ = std::fs::remove_dir_all(&gate_dir);
+}
+
 /// `--version` i `-V` musza wypisac wersje z Cargo.toml i skonczyc kodem 0,
 /// zamiast potraktowac flage jak tresc zadania (tak bylo do 2026-11-19).
 #[test]

@@ -1391,6 +1391,9 @@ impl App {
                 entry.ok = false;
                 self.replace_or_push(slot.map(|d| d.slot), entry);
             }
+            // Kontrakt v2: przejscia bramek sa telemetria, nie rozmowa.
+            // TUI ich nie rysuje (widzi je tylko web UI i transkrypt).
+            "gate" => {}
             "denied" => {
                 let step = num_field(&data, "step");
                 let tool = str_field(&data, "tool");

@@ -1,4 +1,8 @@
-# Kontrakt eventów — v1 (zamrożony 2026-11-13)
+# Kontrakt eventów — v2 (2026-11-19)
+
+Zmiana v1 → v2: dodany typ `gate` (przejścia bramek w transkrypcie, wymóg
+`05-LOOP-AND-GATES.md`). Reszta bez zmian; konsument v1 czyta v2 bez błędu
+(nieznany `kind` pomija), ale traci telemetrię bramek.
 
 Źródło prawdy: `app/src/context.rs` (`Session::event`) i `app/src/agent.rs`.
 Każdy event to jedna linia JSONL w `.agent/sessions/<session_id>.jsonl`:
@@ -28,7 +32,13 @@ wersja tego pliku, nie cicha zmiana.
 | `store` | stan magazynu na starcie | `path`, `journal_mode`, `busy_timeout` |
 | `store_error` | błąd SQLite (nie zabija pętli) | `stage`, `message` |
 | `error` | zakończenie z błędem | `message` |
+| `repair` | jedna próba naprawy odpowiedzi modelu | `step`, `detail` |
+| `gate` | przejście etapu pętli (v2) | `stage`, `detail` |
 | `summary` | zawsze na końcu | `status`, `steps`, `tool_calls`, `denied`, `drift`, `reason` |
+
+`stage` w `gate`: `RECEIVED`, `PLANNING`, `STEP_PROPOSED`, `SCOPE_CHECK`,
+`POLICY_CHECK`, `EXECUTING`, `OBSERVE`, `STOP_CHECK`. Kolejność w pliku jest
+kolejnością wykonania; TUI tych eventów nie rysuje (telemetria), web UI rysuje.
 
 `status` w `summary`: `DONE`, `FAILED_BUDGET`, `FAILED_STALLED`, `FAILED_ERROR`,
 `FAILED_STEPS`.

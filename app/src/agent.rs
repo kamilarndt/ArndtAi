@@ -148,6 +148,18 @@ fn emit(cfg: &Config, stage: &str, detail: &str) {
     }
 }
 
+/// Przejscie bramki: to samo co `emit`, ale zostawia slad w transkrypcie
+/// (kontrakt v2, `kind: "gate"`). Bez tego trajectory nie ma etapow
+/// STEP_PROPOSED/SCOPE_CHECK/POLICY_CHECK/EXECUTING/OBSERVE/STOP_CHECK,
+/// a TUI i web ich nie widza.
+fn emit_gate(cfg: &Config, session: &Session, stage: &str, detail: &str) {
+    emit(cfg, stage, detail);
+    session.event(
+        "gate",
+        json!({ "stage": stage, "detail": detail }),
+    );
+}
+
 fn short(text: &str, limit: usize) -> String {
     if text.chars().count() <= limit {
         text.to_string()
@@ -331,7 +343,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
         // `turn_base` to pierwszy `step_id` tej tury, `steps` jest 1-based.
         let step_no = turn_base.saturating_sub(1) + steps as u64;
 
-        emit(cfg, "RECEIVED", &format!("krok {}", step_no));
+        emit_gate(cfg, &session, "RECEIVED", &format!("krok {}", step_no));
         // Runda 21: przyrosty strumienia idą do TUI osobnym kanałem (poza
         // transkryptem); bez odbiorcy callback nie powstaje i nic nie drukujemy.
         let mut on_delta = |channel: crate::provider::Channel, text: &str| {
@@ -365,7 +377,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
                 };
             }
         };
-        emit(cfg, "PLANNING", &decision.thought);
+        emit_gate(cfg, &session, "PLANNING", &decision.thought);
         session.event(
             "thought",
             json!({ "step": step_no, "thought": decision.thought }),
@@ -384,11 +396,11 @@ pub fn run(task: &str, cfg: &Config) -> Report {
                 };
             }
             Action::Tool { name, args } => {
-                emit(cfg, "STEP_PROPOSED", &name);
-                emit(cfg, "POLICY_CHECK", &name);
+                emit_gate(cfg, &session, "STEP_PROPOSED", &name);
+                emit_gate(cfg, &session, "POLICY_CHECK", &name);
                 let allowed = allowlist.iter().any(|a| a == &name);
 
-                emit(cfg, "SCOPE_CHECK", &name);
+                emit_gate(cfg, &session, "SCOPE_CHECK", &name);
                 let scope_error = match tools::path_arg(&args) {
                     Some(rel) => tools::resolve(&cfg.workspace, &rel).err().map(|e| e.summary()),
                     None => None,
@@ -423,7 +435,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
                     if is_drift {
                         drift += 1;
                     }
-                    emit(cfg, "OBSERVE", &format!("odmowa: {}", message));
+                    emit_gate(cfg, &session, "OBSERVE", &format!("odmowa: {}", message));
                     session.event(
                         "denied",
                         json!({ "step": step_no, "tool": name, "reason": message, "drift": is_drift }),
@@ -467,7 +479,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
                         if !allowed_now {
                             denied += 1;
                             let message = format!("{}: odmowa uzytkownika (tryb ask)", name);
-                            emit(cfg, "OBSERVE", &format!("odmowa: {}", message));
+                            emit_gate(cfg, &session, "OBSERVE", &format!("odmowa: {}", message));
                             session.event(
                                 "denied",
                                 json!({
@@ -547,7 +559,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
                 }
 
                 if let Some(cached) = replay {
-                    emit(cfg, "OBSERVE", &format!("{} cached (krok {} juz wykonany)", name, step_id));
+                    emit_gate(cfg, &session, "OBSERVE", &format!("{} cached (krok {} juz wykonany)", name, step_id));
                     session.event(
                         "tool_result_cached",
                         json!({ "step": step_no, "tool": name, "result": cached }),
@@ -560,7 +572,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
                 }
 
                 if abandoned {
-                    emit(cfg, "OBSERVE", &format!("{} skipped (crash przed wynikiem)", name));
+                    emit_gate(cfg, &session, "OBSERVE", &format!("{} skipped (crash przed wynikiem)", name));
                     session.event(
                         "tool_result_skipped",
                         json!({ "step": step_no, "tool": name, "reason": "crash_before_result" }),
@@ -575,7 +587,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
                     continue 'steps;
                 }
 
-                emit(cfg, "EXECUTING", &name);
+                emit_gate(cfg, &session, "EXECUTING", &name);
                 session.event("tool_call", json!({ "step": step_no, "tool": name, "args": args }));
 
                 let ctx = tools::CallCtx {
@@ -621,8 +633,9 @@ pub fn run(task: &str, cfg: &Config) -> Report {
                     streak += 1;
                 }
 
-                emit(
+                emit_gate(
                     cfg,
+                    &session,
                     "OBSERVE",
                     &format!("{} ok={} ({} bajtow)", name, result.ok, result.bytes),
                 );
@@ -657,7 +670,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
                         drift,
                     };
                 }
-                emit(cfg, "STOP_CHECK", "kontynuuje");
+                emit_gate(cfg, &session, "STOP_CHECK", "kontynuuje");
             }
         }
     };

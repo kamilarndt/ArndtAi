@@ -1,19 +1,64 @@
 # ArndtAi
 
-Agent wykonawczy z pętlą decyzyjną, bramkami (allowlista, budżet), perimetrem
-narzędzi MCP i trwałym stanem w SQLite. Rdzeń w Rust, bez zależności HTTP
-(provider woła `curl`).
+Agent wykonawczy, który robi zadania na plikach w jednym katalogu roboczym:
+czyta, pisze, dopisuje, wysyła powiadomienie — i po crashu nie powtarza tego,
+co już zrobił. Dwa interfejsy: terminal (TUI) i przeglądarka (podgląd sesji).
+Rdzeń w Rust, bez zależności HTTP (provider woła `curl`).
 
-Stan: M0 + Faza B zamknięte. Faza C (web UI) nie rozpoczęta — kontrakt danych
-jest gotowy.
+## Instalacja
+
+```sh
+cargo install --path app          # daje `ardntai` w ~/.cargo/bin
+# albo bez instalacji:
+cd app && cargo build --release   # app/target/release/ardntai
+```
+
+Wymagania: Rust (edition 2021), `curl` w PATH. Klucz providera podajesz
+zmienną środowiskową — nigdy w argv:
+
+```sh
+export ARNDTAI_API_KEY=...            # OpenAI-compatible
+export ARNDTAI_BASE_URL=...           # np. https://opencode.ai/inference/go/openai/v1
+export ARNDTAI_MODEL=...              # opcjonalnie: id modelu
+```
+
+## Pierwsze zadanie
+
+```sh
+mkdir -p /tmp/ws && cd /tmp/ws
+ardntai "write a.txt :: tresc; read a.txt"     # mock: działa bez klucza
+ardntai "notatka: dodaj linie" --provider openai
+ardntai tui                                    # tryb terminalowy
+ardntai --resume "dopisz druga linie"           # wznowienie po przerwaniu
+```
+
+Podgląd sesji w przeglądarce (tylko odczyt):
+
+```sh
+cd /tmp/ws && python3 -m http.server 8765
+# otwórz http://127.0.0.1:8765/<ścieżka-do-ArndtAi>/app/web/
+```
+
+## Znane ograniczenia (v0.1)
+
+- Brak streamingu tokenów: model zwraca całą decyzję na krok.
+- Web UI tylko czyta; zadania wysyłasz z TUI albo CLI.
+- `demo` i część testów działają na atrapie providera; zachowanie prawdziwego
+  modelu zależy od niego (format JSON, limity).
+- Jeden writer bazy: dwa procesy na tym samym workspace to nie jest wspierany
+  scenariusz (poza perimetrem MCP, który ma własną bramkę).
+- Bez podpisu binarki, bez CI po stronie GitHuba, bez auto-update.
+
+Stan szczegółowy: `docs/STATUS.md`; bramki i dowody: `GATES.md`.
 
 ## Układ
 
 ```
 app/                     kod (Cargo.toml, src/, tests/)
 docs/contracts/          mcp.md, events.md — formaty zamrożone
-docs/architecture/adr/   ADR-001..003
+docs/architecture/adr/   ADR-001..004
 docs/re/                 notatki decyzyjne, odstępstwa
+docs/specs/              specyfikacje funkcji (Faza C)
 docs/ARCHITECTURE.md     jak zbudowane (moduły, pętla, magazyn)
 docs/STATUS.md           co zrobione, co otwarte, dług
 docs/README.md           mapa dokumentacji

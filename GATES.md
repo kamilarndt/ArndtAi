@@ -101,3 +101,10 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   CWD: app
   EVIDENCE: 2026-11-19 — `app/web/` (HTML+JS, zero zależności); w Orca browser na `http://127.0.0.1:8765/app/web/`: 12/12 typów `kind`, konsola bez wpisów; dopisanie pełnej linii → +1 wiersz w 2 s bez przeładowania; JSON bez `\n` → 0 nowych wierszy i 0 błędów, po dopisaniu `\n` → wiersz z treścią; `sessionUrl('../../etc/passwd')` → „zła nazwa sesji”; filtr `kind` ukrywa i pokazuje wiersze. Zrzut `app/shots/faza-c-sesja.png`; `checks/round-18/` z CA.
   NOTE: MVP czyta wyłącznie JSONL; `state.db` i sterowanie zadaniami są poza zakresem. Render markdown w web UI — kolejny krok.
+
+- [x] G17: v0.1 — czysta instalacja + realne zadanie na żywym modelu
+  CHECK: cargo install --path app --root /tmp/ardntai-install && /tmp/ardntai-install/bin/ardntai --version
+  EXPECT: binarka powstaje, `ardntai 0.1.0`, exit 0
+  CWD: repo
+  EVIDENCE: 2026-11-19 — `cargo install` → 4,25 MB binarka; `--version` → `ardntai 0.1.0` (flaga dodana tego dnia; wcześniej była traktowana jak treść zadania). Czysty workspace `/tmp/live-v01b`, realny model `mimo-v2.6-flash` przez OC-Go: `Status: DONE, kroki 3, narzędzia 2, odmowy 0, dryf 0`, `one.txt` = `alfa` (4 B), transkrypt `app/shots/live-v01b-sesja.jsonl` (task → 2× tool_call/tool_result → summary). Perimetr `mcp`.
+  NOTE: nie uruchamiałem `scripts/live_test.py` (wymaga `pyte`, brak w systemie) — dowód TUI na żywo pochodzi z 14 listopada; ten przebieg to CLI na release.

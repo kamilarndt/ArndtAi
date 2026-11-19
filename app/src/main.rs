@@ -106,6 +106,12 @@ fn run_cli() -> i32 {
             usage();
             0
         }
+        // Wersja musi byc flaga, nie trescia zadania: skrypty instalacyjne
+        // sprawdzaja `ardntai --version` przed uruchomieniem.
+        "version" | "-V" | "--version" => {
+            println!("ardntai {}", env!("CARGO_PKG_VERSION"));
+            0
+        }
         // `ardntai tui` oraz `ardntai --tui` — jeden tryb, dwie pisownie.
         "tui" | "--tui" => match tui::parse(&args[1..]) {
             Ok(opts) => tui::run(opts),

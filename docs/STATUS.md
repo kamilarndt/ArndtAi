@@ -10,7 +10,7 @@ po SIGKILL, Python core (ADR-004).
 
 | obszar | dowód |
 |---|---|
-| pętla + bramki | `cargo test` → **232 unit + 20 integration**, exit 0; `cargo run -- demo` → 39/39 |
+| pętla + bramki | `cargo test` → **232 unit + 21 integration**, exit 0; `cargo run -- demo` → 39/39 |
 | trwały stan, wznowienie | nowa tura liczy kroki dalej (`max+1`), replay tylko w turze |
 | idempotencja, sandbox | `mcp::tests`, `tools::tests`, `store::tests` |
 | narzędzia | 5: `fs.read`, `fs.write`, `fs.append`, `notify.send`, `skill.load` |
@@ -48,3 +48,13 @@ po SIGKILL, Python core (ADR-004).
 - Oryginalnego pagera nie uruchamialiśmy (wymaga konta xAI); wierność oparta na
   zrzucie README i kodzie `xai-grok-pager`.
 - Glif `❯` w zrzutach PNG wychodzi jako `>` — font8x8 nie ma U+276F; w terminalu jest poprawny.
+
+
+## v0.1 (2026-11-19)
+
+- `cargo install --path app` → `ardntai 0.1.0`; `--version` to flaga (G17).
+- Realne zadanie na żywym modelu (`mimo-v2.6-flash`, OC-Go): DONE w 3 krokach,
+  2 wywołania narzędzi, plik `one.txt` = `alfa`; transkrypt
+  `app/shots/live-v01b-sesja.jsonl`.
+- README przepisany pod użytkownika (instalacja, pierwsze zadanie, ograniczenia).
+- ADR-004 zamknięty: rdzeń zostaje w Rust.

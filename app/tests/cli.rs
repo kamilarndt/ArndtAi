@@ -1208,6 +1208,28 @@ fn killing_the_process_inside_the_tool_leaves_the_step_abandoned() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// `--version` i `-V` musza wypisac wersje z Cargo.toml i skonczyc kodem 0,
+/// zamiast potraktowac flage jak tresc zadania (tak bylo do 2026-11-19).
+#[test]
+fn version_flags_print_the_crate_version() {
+    let dir = temp_dir("version");
+    for flag in ["--version", "-V"] {
+        let out = run(&dir, &[flag]);
+        assert_eq!(out.code, 0, "{flag} stderr: {}", out.stderr);
+        let text = format!("{}{}", out.stdout, out.stderr);
+        assert!(
+            text.contains(env!("CARGO_PKG_VERSION")),
+            "{flag} ma pokazac wersje {}: {text}",
+            env!("CARGO_PKG_VERSION")
+        );
+        assert!(
+            !text.contains("Zadanie:"),
+            "{flag} nie moze byc tresciа zadania: {text}"
+        );
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// `--screenshot` to komenda, ktora Craft Anything uruchamia po kazdym
 /// budowaniu: musi zapisac prawdziwy, niepusty PNG i skonczyc sie kodem 0
 /// bez terminala i bez okna. Sprawdzamy tez, ze po zrzucie nie zostaje

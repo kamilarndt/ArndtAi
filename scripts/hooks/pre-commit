@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Pre-commit: dowod przed commitem (AGENTS.md, zasada 7).
+# Uruchamia `make verify` — build, testy, demo, potem spojnosc dowodow.
+# Odswiezone dowody (checks/, craft.json) wchodza do tego samego commita,
+# zeby `verify.py --assert` nigdy nie zostal czerwony po zmianie w app/src/.
+set -euo pipefail
+
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+
+if ! make verify; then
+    echo "" >&2
+    echo "pre-commit: 'make verify' nie przeszlo — commit odrzucony." >&2
+    echo "Uruchom 'make verify', przeczytaj pierwszy blad i napraw go." >&2
+    echo "Wyjatek: 'git commit --no-verify' (tylko swiadomie, poza dowodem)." >&2
+    exit 1
+fi
+
+# Tylko dowody — zadnych cudzych zmian w indeksie.
+if [ -d checks ] || [ -f craft.json ]; then
+    git add checks craft.json
+fi
+
+exit 0

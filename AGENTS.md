@@ -46,6 +46,18 @@ cargo run -- --screenshot out.png   # zrzut do PNG, tryb bezobsługowy
 python3 ../scripts/verify.py        # dowody (wymaga craft.json w korzeniu)
 ```
 
+Z korzenia repo:
+
+```sh
+make verify                 # build, testy, demo + spojnosc dowodow (checks/, craft.json)
+make test                   # tylko cargo test
+git config core.hooksPath scripts/hooks   # raz na klon: hook pre-commit = make verify
+```
+
+Hook `pre-commit` odrzuca commit, gdy `make verify` padnie, i dokłada
+odswiezone `checks/evidence.json` i `craft.json` do tego samego commita.
+Logi `checks/*.log` są generowane przy każdym przebiegu i nie idą do historii.
+
 ## Zasady pracy
 
 1. **Nie zmieniaj formatów zamrożonych bez nowej wersji.** `docs/contracts/mcp.md`

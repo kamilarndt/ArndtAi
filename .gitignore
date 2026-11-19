@@ -21,3 +21,7 @@ reference/grok-build/
 app/a.txt
 app/notatka.txt
 app/raport.txt
+
+# Logi dowodow sa generowane przy kazdym `make verify`; w historii trzymamy
+# evidence.json i zrzuty, nie timestampowane logi.
+checks/*.log

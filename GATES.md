@@ -90,7 +90,7 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
 
 - [x] G15: utrata procesu w środku pracy (kill -9) nie powtarza efektu
   CHECK: cd app && cargo test --test cli killing_the_process
-  EXPECT: 2 passed; 0 failed — `killing_the_process_while_the_model_thinks_does_not_repeat_the_step` i `killing_the_process_inside_the_tool_leaves_the_step_abandoned`
+  EXPECT: 3 passed; 0 failed — `killing_the_process_while_the_model_thinks_does_not_repeat_the_step`, `killing_the_process_inside_the_tool_leaves_the_step_abandoned`, `mcp_resume_replays_a_done_step_without_reexecuting_it`
   CWD: app
   EVIDENCE: 2026-11-19, exit 0, 2/2 zielone. Krok `done` wraca z zapisanego wyniku (`tool_result_cached`, plik nietknięty), krok `proposed` bez wyniku jest `abandoned` (`tool_result_skipped`, `crash_before_result`). Mutanty: `same=false` → test 1 czerwony; `abandoned=false` → test 2 czerwony (proces wisi na FIFO, limit 30 s go ubija).
-  NOTE: oba testy idą ścieżką rdzenia (`--no-mcp`). Ścieżka perimetru MCP (domyślna) po SIGKILL wykonuje krok `done` drugi raz — znalezione przy tych testach, do naprawy osobno.
+  NOTE: trzy testy; trzeci (`mcp_resume_replays_a_done_step_without_reexecuting_it`) idzie ścieżką domyślną (perimetr MCP) i pokazuje, że serwer oddaje wynik z `steps.result_json` — plik nie powstaje ponownie, mimo `ok=true` w wyniku. Wcześniejsza nota o „drugim wykonaniu przez MCP" była błędna: mieszano transporty (pierwszy bieg `--no-mcp`, wznowienie z MCP).

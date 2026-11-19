@@ -10,7 +10,7 @@ po SIGKILL, Python core (ADR-004).
 
 | obszar | dowód |
 |---|---|
-| pętla + bramki | `cargo test` → **232 unit + 17 integration**, exit 0; `cargo run -- demo` → 39/39 |
+| pętla + bramki | `cargo test` → **232 unit + 18 integration**, exit 0; `cargo run -- demo` → 39/39 |
 | trwały stan, wznowienie | nowa tura liczy kroki dalej (`max+1`), replay tylko w turze |
 | idempotencja, sandbox | `mcp::tests`, `tools::tests`, `store::tests` |
 | narzędzia | 5: `fs.read`, `fs.write`, `fs.append`, `notify.send`, `skill.load` |
@@ -21,7 +21,7 @@ po SIGKILL, Python core (ADR-004).
 | skille | `skills/<nazwa>/SKILL.md`, trzy katalogi, lista w prompcie (max 20), treść przez `/skill` lub `skill.load` (8 KB) |
 | markdown | nagłówki, listy, kod z podświetlaniem (rust/json/bash/toml), tabela, cytat; surowe w wynikach narzędzi |
 | testy na żywo | `scripts/live_test.py`, 8/8 (realny model OC-Go, pty + pyte) |
-| kill -9 | `app/tests/cli.rs` — dwa testy na prawdziwym SIGKILL: krok `done` wraca cached, `proposed` → `abandoned`; G15 w `GATES.md` |
+| kill -9 | `app/tests/cli.rs` — trzy testy na prawdziwym SIGKILL: krok `done` wraca z wyniku, `proposed` → `abandoned`, perimetr MCP też nie powtarza; G15 w `GATES.md` |
 | backfill FTS | baza bez `user_version` po migracji trafia w wyszukiwaniu — `store::tests::backfill_indexes_transcripts_written_before_fts_existed` (dowód: po usunięciu `rebuild` test jest czerwony) |
 | kontrakty | `mcp.md` v0.2 (+`fs.append`), `events.md` (+`repair`, tabele M1) |
 | bramki | `GATES.md` G1–G13 z hashami |
@@ -29,8 +29,8 @@ po SIGKILL, Python core (ADR-004).
 ## Co pozostaje (M1)
 
 1. Faza C — web UI (kontrakt eventów gotowy; render markdown gotowy do przeniesienia).
-2. Perimetr MCP: po SIGKILL wznowienie wykonuje krok `done` drugi raz (znalezione
-   19 listopada przy testach kill -9; ścieżka rdzenia `--no-mcp` jest poprawna).
+2. ~~Perimetr MCP po SIGKILL~~ — sprawdzone 19 listopada: perimetr oddaje wynik
+   z `steps.result_json`, efektu nie powtarza; trzy testy w `app/tests/cli.rs`.
 3. Python core (ADR-004 Proposed).
 4. **Repo git jest** (`github.com/kamilarndt/ArndtAi`, prywatne, od 19 listopada);
    `make verify` + hook pre-commit pilnują dowodów przed commitem.

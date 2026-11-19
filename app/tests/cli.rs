@@ -1073,6 +1073,61 @@ fn killing_the_process_while_the_model_thinks_does_not_repeat_the_step() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Ta sama próba przez perimetr MCP (ścieżka domyślna): serwer trzyma własną
+/// bramkę na tej samej `state.db`, więc po SIGKILL wznowiony krok `done`
+/// wraca z zapisanym wynikiem, a nie drugim efektem.
+#[test]
+fn mcp_resume_replays_a_done_step_without_reexecuting_it() {
+    let dir = temp_dir("kill-model-mcp");
+    let ws = dir.join("ws");
+    std::fs::create_dir_all(&ws).unwrap();
+    let append = "{\"thought\":\"dopisuje\",\"tool\":\"fs.append\",\"args\":{\"path\":\"a.txt\",\"content\":\"raz\"}}";
+    let base = fake_model_then_hang(append.to_string());
+    let mut child = spawn_bin(
+        &ws,
+        &["run", "dopisz raz", "--provider", "openai", "-q"],
+        &[
+            ("ARNDTAI_API_KEY", "test-key"),
+            ("ARNDTAI_BASE_URL", base.as_str()),
+        ],
+    );
+    wait_for_transcript(
+        &ws,
+        "\"kind\":\"tool_result\"",
+        std::time::Duration::from_secs(10),
+    );
+    child.kill().expect("SIGKILL na dziecku");
+    let _ = child.wait();
+    assert_eq!(
+        std::fs::read_to_string(ws.join("a.txt")).unwrap(),
+        "raz",
+        "efekt kroku jest zapisany przed zabiciem"
+    );
+    std::fs::rename(ws.join("a.txt"), ws.join("a.txt.bak")).unwrap();
+
+    let (resume_base, _) = fake_model(vec![append.to_string(), FINISH_ANSWER.to_string()]);
+    let out = run_env_within(
+        &ws,
+        &["run", "dopisz raz", "--provider", "openai", "--resume", "-q"],
+        &[
+            ("ARNDTAI_API_KEY", "test-key"),
+            ("ARNDTAI_BASE_URL", resume_base.as_str()),
+        ],
+        std::time::Duration::from_secs(30),
+    );
+    assert_eq!(
+        out.code, 0,
+        "wznowienie ma się skończyć DONE, stdout:\n{}\nstderr:\n{}",
+        out.stdout, out.stderr
+    );
+    assert!(
+        !ws.join("a.txt").exists(),
+        "perimetr MCP nie może wykonać efektu drugi raz:\n{}",
+        transcript(&ws)
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Krok `proposed` bez wyniku (proces zabity w środku narzędzia) po
 /// wznowieniu jest `abandoned`: zero powtórzenia efektu, a tura idzie dalej.
 /// FIFO jest tu narzędziem: `fs.read` otwiera je do czytania i czeka na

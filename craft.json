@@ -1,0 +1,282 @@
+{
+  "version": 5,
+  "name": "ArndtAi",
+  "request": "TUI terminalowe dla ArndtAi wedlug craft-anything-input/NEXT.md. REA grok-build, potem minimalny TUI na ratatui (scrollback + prompt + status), bez zmian kontraktow i bez web UI.",
+  "target": {
+    "kind": "none"
+  },
+  "stack": "Rust (console)",
+  "status": "ready",
+  "note": "Ready: 5 checks pass; evidence in checks/evidence.json",
+  "created_ms": 1794572139328,
+  "updated_ms": 1795097467871,
+  "checks": [
+    {
+      "round": 1,
+      "check": "build",
+      "passed": true,
+      "similarity": null,
+      "note": "`cargo build --quiet` w app/ -> exit 0 (50 ms, sha256 e3b0c44298fc)",
+      "artifacts": [
+        "checks/1795097465973-build.log"
+      ],
+      "at_ms": 1795097465973
+    },
+    {
+      "round": 1,
+      "check": "own-tests",
+      "passed": true,
+      "similarity": null,
+      "note": "`cargo test --quiet` w app/ -> exit 0 (1240 ms, sha256 b181a551cb7c)",
+      "artifacts": [
+        "checks/1795097465974-own-tests.log"
+      ],
+      "at_ms": 1795097465974
+    },
+    {
+      "round": 1,
+      "check": "demo",
+      "passed": true,
+      "similarity": null,
+      "note": "`cargo run --quiet -- demo` w app/ -> exit 0 (297 ms, sha256 4e0d2689aae3)",
+      "artifacts": [
+        "checks/1795097465975-demo.log"
+      ],
+      "at_ms": 1795097465975
+    },
+    {
+      "round": 1,
+      "check": "security",
+      "passed": true,
+      "similarity": null,
+      "note": "`cargo test --quiet tools::tests` w app/ -> exit 0 (61 ms, sha256 3e901e7daafb)",
+      "artifacts": [
+        "checks/1795097465976-security.log"
+      ],
+      "at_ms": 1795097465976
+    },
+    {
+      "round": 1,
+      "check": "durability",
+      "passed": true,
+      "similarity": null,
+      "note": "`cargo test --quiet agent::tests` w app/ -> exit 0 (241 ms, sha256 eb415cdc067d)",
+      "artifacts": [
+        "checks/1795097465977-durability.log"
+      ],
+      "at_ms": 1795097465977
+    },
+    {
+      "round": 1,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-1/screenshot.png"
+      ],
+      "at_ms": 1794574167923
+    },
+    {
+      "round": 2,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-2/screenshot.png"
+      ],
+      "at_ms": 1794580371755
+    },
+    {
+      "round": 3,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-3/screenshot.png"
+      ],
+      "at_ms": 1794581486700
+    },
+    {
+      "round": 4,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-4/screenshot.png"
+      ],
+      "at_ms": 1794583392615
+    },
+    {
+      "round": 5,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-5/screenshot.png"
+      ],
+      "at_ms": 1794588442795
+    },
+    {
+      "round": 6,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×672).",
+      "artifacts": [
+        "checks/round-6/screenshot.png"
+      ],
+      "at_ms": 1794593321454
+    },
+    {
+      "round": 7,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-7/screenshot.png"
+      ],
+      "at_ms": 1794601740715
+    },
+    {
+      "round": 8,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-8/screenshot.png"
+      ],
+      "at_ms": 1794613568078
+    },
+    {
+      "round": 9,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-9/screenshot.png"
+      ],
+      "at_ms": 1794615209220
+    },
+    {
+      "round": 10,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-10/screenshot.png"
+      ],
+      "at_ms": 1794615854418
+    },
+    {
+      "round": 11,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-0/screenshot.png"
+      ],
+      "at_ms": 1794616555740
+    },
+    {
+      "round": 12,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-12/screenshot.png"
+      ],
+      "at_ms": 1794617224588
+    },
+    {
+      "round": 13,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-13/screenshot.png"
+      ],
+      "at_ms": 1794619241436
+    },
+    {
+      "round": 14,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-14/screenshot.png"
+      ],
+      "at_ms": 1794621144962
+    },
+    {
+      "round": 15,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-15/screenshot.png"
+      ],
+      "at_ms": 1794622784268
+    },
+    {
+      "round": 16,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-16/screenshot.png"
+      ],
+      "at_ms": 1794624049847
+    },
+    {
+      "round": 17,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-17/screenshot.png"
+      ],
+      "at_ms": 1794625766178
+    }
+  ],
+  "agent_session": null,
+  "agent_session_by": "hermes",
+  "capture_deep": true,
+  "allowed_actions": [],
+  "last_reply": "Gotowe — runda 18 zrobiona.\n\nW odpowiedziach asystenta TUI renderuje teraz prawdziwy markdown: nagłówki bez kratki (pogrubione), pogrubienie i kursywę jako atrybuty, kod w linii na jaśniejszym tle, listy z wcięciem i punktorami, bloki kodu w ramce z etykietą języka w prawym górnym rogu i kolorowaniem słów kluczowych, tekstów, liczb i komentarzy dla Rusta, JSON-a, basha i TOML-a, cytaty z pionową kreską i tabele z siatką. Tekst użytkownika, wyniki narzędzi i powód zakończenia sesji zostają dosłowne, więc gwiazdki czy kratki z pliku użytkownika nie znikają. Poniżej 40 kolumn ramka kodu traci prawą krawędź, a treść zostaje; długie linie kodu są ucinane z wielokropkiem i liczbą ukrytych znaków, a blok dłuższy niż 200 linii kończy się skrótem z liczbą pominiętych.\n\nŚwiadomie odpuściłem obrazy, klikalne linki, HTML, LaTeX i mermaid — link pokazuje się jako podkreślony tekst z adresem w nawiasie, obraz jako podpis z adresem; notatka opisuje to razem z kosztem renderu. Jedno odstępstwo od zapisu w zleceniu: listy numerowane zachowują swoje numery zamiast dostać kropkę, bo numer niesie informację — reszta list ma punktor.\n\nSprawdzone realnym uruchomieniem: budowanie bez błędów, 231 testów jednostkowych i 15 integracyjnych zielonych, demo 39/39, a oba zrzuty (960×608 i ten sam ekran przy 40 kolumnach) obejrzałem — nagłówek, lista, kod z etykietą, tabela i cytat są czytelne, nic nie nachodzi. Prawdziwego strumieniowania tokenów w tej wersji pętli jeszcze nie ma (model przysyła jedną myśl na krok), więc rosnący w miejscu blok jest przygotowany i przetestowany, ale pokaże się dopiero, gdy dojdzie streaming.\n\nNastępny krok wart zlecenia: przenieść ten sam render do eksportu i kopiowania sesji, żeby zapisany tekst też niósł strukturę odpowiedzi.",
+  "asset_budget_usd": 0.0,
+  "generate_assets": false,
+  "start_files": [
+    "craft-anything-input",
+    "docs",
+    "audyty",
+    "GATES.md",
+    "README.md",
+    "scripts"
+  ],
+  "questions": "decide",
+  "approvals": {
+    "web": "allow",
+    "commands": "allow",
+    "outside_files": "allow",
+    "publish": "refuse",
+    "delete_outside": "refuse",
+    "system": "refuse",
+    "other_tools": "allow"
+  }
+}

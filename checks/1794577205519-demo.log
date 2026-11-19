@@ -1,0 +1,42 @@
+== DEMO ArndtAi ==
+  OK   run1: plik zapisany
+  OK   run1: tresc pliku
+  OK   run1: 3 wywolania narzedzi
+  OK   run1: powiadomienie w outboxie
+  OK   run1: status DONE
+  OK   run1: kroki policzone
+  OK   run1: powod wypelniony
+  OK   run1: transkrypt sesji
+  OK   run2: odmowa scope guardu
+  OK   run2: plik poza workspace nie powstaje
+  OK   run2: sesja konczy sie czysto
+  OK   run3: odmowa allowlisty
+  OK   run3: notify nie trafia do outboxa
+  OK   run3: sesja konczy sie czysto
+  OK   mcp: tools/list zwraca 3 narzedzia
+  OK   mcp: fs.write zadzialal
+  OK   mcp: plik z fs.write istnieje
+  OK   mcp: fs.read zwraca tresc
+  OK   mcp: notify.send zwraca status queued
+  OK   kontrakt: '..' daje DENIED
+  OK   kontrakt: sciezka absolutna daje DENIED
+  OK   kontrakt: pusta sciezka daje SCHEMA_ERROR
+  OK   kontrakt: zapis ponad 1 MB daje DENIED
+  OK   kontrakt: plik ponad limit nie powstaje
+  OK   kontrakt: brak pliku daje NOT_FOUND
+  OK   kontrakt: fs.write bez content daje SCHEMA_ERROR
+  OK   kontrakt: nieznane narzedzie daje DENIED
+  OK   kontrakt: zapis atomowy nie zostawia .tmp
+  OK   kontrakt: notify bez kanalu uzywa 'default'
+  OK   kontrakt: symlink utworzony
+  OK   kontrakt: symlink poza workspace daje DENIED
+  OK   dryf: powtorzenie wykryte
+  OK   dryf: drugie wywolanie nie poszlo
+  OK   pamiec: osobowosc z personality/base.md
+  OK   pamiec: lite widzi osobowosc
+  OK   pamiec: lite widzi project.md
+  OK   pamiec: lite nie widzi facts.md
+  OK   pamiec: pro widzi facts.md
+  OK   pamiec: nazwy poziomow
+39/39 sprawdzen przeszlo
+DEMO OK

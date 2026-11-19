@@ -1,0 +1,19 @@
+  ~/projects/ArndtAi
+                                   ⠀⠀⠀⠀⠀⠀⣀⣀⡀⠀⠀⠀⢀⠄
+                                   ⠀⠀⠀⣠⣾⠿⠛⠛⠛⠛⢀⡴⠁⠀
+                                   ⠀⠀⣼⡟⠁⠀⠀⠀⢀⡴⠻⣿⡀⠀
+                                   ⠀⠀⣿⡇⠀⠀⠀⠔⠁⠀⠀⣿⡇⠀
+                                   ⠀⠀⢹⣷⠀⠀⠀⠀⠀⢀⣴⡿⠀⠀
+                                   ⠀⢀⠞⠁⠠⢶⣶⣶⣶⠿⠋⠀⠀⠀
+                                   ⠐⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+                 Resume session                               ctrl+r
+                 New worktree                                 ctrl+w
+                 Changelog
+                 Quit                                         ctrl+q
+                 Grok 4.7 is here!
+                 Select 'Grok 4.7' under /model.
+   Tip: Try out workflows using /workflows.
+  ╭───────────────────────────────────────────────────────────────────────────────╮
+  │ ❯                                                                             │
+  ╰────────────────────────────────────────── Grok 4.7 (medium) · always-approve ─╯
+                                                        Grok Build  1.0.77 [stable]

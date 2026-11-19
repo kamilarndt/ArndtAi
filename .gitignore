@@ -1,0 +1,23 @@
+# Build
+target/
+
+# Lokalny stan agenta: SQLite (WAL) i transkrypty sesji
+.agent/
+*.db
+*.db-wal
+*.db-shm
+
+# Narzędzia lokalne: Craft Anything, magic context, unlazy
+.cortexkit/
+.unlazy/locks/
+feed.json
+usage.json
+
+# Klon wzorcowy do RE (xai-org/grok-build) — odtwarzalny z upstreamu,
+# ma własne .git i 1,4 GB z `target/`; notatki z RE zostają w docs/re/.
+reference/grok-build/
+
+# Resztki testów na żywo w katalogu budowania
+app/a.txt
+app/notatka.txt
+app/raport.txt

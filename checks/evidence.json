@@ -1,0 +1,76 @@
+{
+  "generated_at_ms": 1795097467869,
+  "tree_sha256": "e9ad61af55fb9e038138da2f2a0ae065587b5f282add4c83d51624e7f9447a88",
+  "checks": [
+    {
+      "check": "build",
+      "passed": true,
+      "exit_code": 0,
+      "command": "cargo build --quiet",
+      "cwd": "app",
+      "duration_ms": 50,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "output_bytes": 0,
+      "output_tail": "",
+      "tree_sha256": "e9ad61af55fb9e038138da2f2a0ae065587b5f282add4c83d51624e7f9447a88",
+      "artifact": "checks/1795097465973-build.log",
+      "at_ms": 1795097465973
+    },
+    {
+      "check": "own-tests",
+      "passed": true,
+      "exit_code": 0,
+      "command": "cargo test --quiet",
+      "cwd": "app",
+      "duration_ms": 1240,
+      "output_sha256": "b181a551cb7c6751fc761b09ae2c9102da7cb5d1df532a47cc78b2b65d159dac",
+      "output_bytes": 496,
+      "output_tail": "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s",
+      "tree_sha256": "e9ad61af55fb9e038138da2f2a0ae065587b5f282add4c83d51624e7f9447a88",
+      "artifact": "checks/1795097465974-own-tests.log",
+      "at_ms": 1795097465974
+    },
+    {
+      "check": "demo",
+      "passed": true,
+      "exit_code": 0,
+      "command": "cargo run --quiet -- demo",
+      "cwd": "app",
+      "duration_ms": 297,
+      "output_sha256": "4e0d2689aae39d0727f0ae8c6a7a5dfc8193a5641e3bd470e077dafb9d852c21",
+      "output_bytes": 1558,
+      "output_tail": "DEMO OK",
+      "tree_sha256": "e9ad61af55fb9e038138da2f2a0ae065587b5f282add4c83d51624e7f9447a88",
+      "artifact": "checks/1795097465975-demo.log",
+      "at_ms": 1795097465975
+    },
+    {
+      "check": "security",
+      "passed": true,
+      "exit_code": 0,
+      "command": "cargo test --quiet tools::tests",
+      "cwd": "app",
+      "duration_ms": 61,
+      "output_sha256": "3e901e7daafb875b613cf56b4aefb8ab0e316a45f41b06763ee131c84c64657e",
+      "output_bytes": 248,
+      "output_tail": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.00s",
+      "tree_sha256": "e9ad61af55fb9e038138da2f2a0ae065587b5f282add4c83d51624e7f9447a88",
+      "artifact": "checks/1795097465976-security.log",
+      "at_ms": 1795097465976
+    },
+    {
+      "check": "durability",
+      "passed": true,
+      "exit_code": 0,
+      "command": "cargo test --quiet agent::tests",
+      "cwd": "app",
+      "duration_ms": 241,
+      "output_sha256": "eb415cdc067d8b2e3e00116b5a5710a32ab42d2c19e028ef312aa3ab8fcd48da",
+      "output_bytes": 249,
+      "output_tail": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.00s",
+      "tree_sha256": "e9ad61af55fb9e038138da2f2a0ae065587b5f282add4c83d51624e7f9447a88",
+      "artifact": "checks/1795097465977-durability.log",
+      "at_ms": 1795097465977
+    }
+  ]
+}

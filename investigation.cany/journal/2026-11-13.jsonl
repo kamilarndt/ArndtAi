@@ -1,0 +1,7 @@
+{"caller":"ui","duration_ms":0,"kind":"tool_call","ok":true,"params":{},"time":"2026-11-13T12:18:20Z","tool":"project_pins_list","ts":1794572300}
+{"caller":"ui","duration_ms":0,"kind":"tool_call","ok":true,"params":{},"time":"2026-11-13T12:19:16Z","tool":"project_pins_list","ts":1794572356}
+{"caller":"ui","duration_ms":0,"kind":"tool_call","ok":true,"params":{},"time":"2026-11-13T12:26:27Z","tool":"project_pins_list","ts":1794572787}
+{"caller":"ui","duration_ms":0,"kind":"tool_call","ok":true,"params":{},"time":"2026-11-13T12:26:54Z","tool":"project_pins_list","ts":1794572814}
+{"caller":"ui","duration_ms":0,"kind":"tool_call","ok":true,"params":{},"time":"2026-11-13T12:29:45Z","tool":"project_pins_list","ts":1794572985}
+{"caller":"ui","duration_ms":0,"kind":"tool_call","ok":true,"params":{},"time":"2026-11-13T12:29:54Z","tool":"project_pins_list","ts":1794572994}
+{"caller":"ui","duration_ms":0,"kind":"tool_call","ok":true,"params":{},"time":"2026-11-13T12:33:37Z","tool":"project_pins_list","ts":1794573217}

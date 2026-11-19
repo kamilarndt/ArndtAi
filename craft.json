@@ -9,62 +9,62 @@
   "status": "ready",
   "note": "Ready: 5 checks pass; evidence in checks/evidence.json",
   "created_ms": 1794572139328,
-  "updated_ms": 1795103142884,
+  "updated_ms": 1795104090596,
   "checks": [
     {
       "round": 1,
       "check": "build",
       "passed": true,
       "similarity": null,
-      "note": "`cargo build --quiet` w app/ -> exit 0 (54 ms, sha256 e3b0c44298fc)",
+      "note": "`cargo build --quiet` w app/ -> exit 0 (61 ms, sha256 e3b0c44298fc)",
       "artifacts": [
-        "checks/1795103140782-build.log"
+        "checks/1795104088063-build.log"
       ],
-      "at_ms": 1795103140782
+      "at_ms": 1795104088063
     },
     {
       "round": 1,
       "check": "own-tests",
       "passed": true,
       "similarity": null,
-      "note": "`cargo test --quiet` w app/ -> exit 0 (1337 ms, sha256 8513a247ca30)",
+      "note": "`cargo test --quiet` w app/ -> exit 0 (1825 ms, sha256 d7a7b13e8d37)",
       "artifacts": [
-        "checks/1795103140783-own-tests.log"
+        "checks/1795104088064-own-tests.log"
       ],
-      "at_ms": 1795103140783
+      "at_ms": 1795104088064
     },
     {
       "round": 1,
       "check": "demo",
       "passed": true,
       "similarity": null,
-      "note": "`cargo run --quiet -- demo` w app/ -> exit 0 (354 ms, sha256 4e0d2689aae3)",
+      "note": "`cargo run --quiet -- demo` w app/ -> exit 0 (325 ms, sha256 4e0d2689aae3)",
       "artifacts": [
-        "checks/1795103140784-demo.log"
+        "checks/1795104088065-demo.log"
       ],
-      "at_ms": 1795103140784
+      "at_ms": 1795104088065
     },
     {
       "round": 1,
       "check": "security",
       "passed": true,
       "similarity": null,
-      "note": "`cargo test --quiet tools::tests` w app/ -> exit 0 (76 ms, sha256 fb226c163a02)",
+      "note": "`cargo test --quiet tools::tests` w app/ -> exit 0 (64 ms, sha256 22cb83eb42a6)",
       "artifacts": [
-        "checks/1795103140785-security.log"
+        "checks/1795104088066-security.log"
       ],
-      "at_ms": 1795103140785
+      "at_ms": 1795104088066
     },
     {
       "round": 1,
       "check": "durability",
       "passed": true,
       "similarity": null,
-      "note": "`cargo test --quiet agent::tests` w app/ -> exit 0 (270 ms, sha256 ae6914aab247)",
+      "note": "`cargo test --quiet agent::tests` w app/ -> exit 0 (249 ms, sha256 22d88a513430)",
       "artifacts": [
-        "checks/1795103140786-durability.log"
+        "checks/1795104088067-durability.log"
       ],
-      "at_ms": 1795103140786
+      "at_ms": 1795104088067
     },
     {
       "round": 1,
@@ -252,13 +252,24 @@
         "checks/round-17/screenshot.png"
       ],
       "at_ms": 1794625766178
+    },
+    {
+      "round": 18,
+      "check": "app-screenshot",
+      "passed": true,
+      "similarity": null,
+      "note": "The program starts and draws (960×608).",
+      "artifacts": [
+        "checks/round-18/screenshot.png"
+      ],
+      "at_ms": 1795103978891
     }
   ],
   "agent_session": null,
   "agent_session_by": "hermes",
   "capture_deep": true,
   "allowed_actions": [],
-  "last_reply": "Gotowe — runda 18 zrobiona.\n\nW odpowiedziach asystenta TUI renderuje teraz prawdziwy markdown: nagłówki bez kratki (pogrubione), pogrubienie i kursywę jako atrybuty, kod w linii na jaśniejszym tle, listy z wcięciem i punktorami, bloki kodu w ramce z etykietą języka w prawym górnym rogu i kolorowaniem słów kluczowych, tekstów, liczb i komentarzy dla Rusta, JSON-a, basha i TOML-a, cytaty z pionową kreską i tabele z siatką. Tekst użytkownika, wyniki narzędzi i powód zakończenia sesji zostają dosłowne, więc gwiazdki czy kratki z pliku użytkownika nie znikają. Poniżej 40 kolumn ramka kodu traci prawą krawędź, a treść zostaje; długie linie kodu są ucinane z wielokropkiem i liczbą ukrytych znaków, a blok dłuższy niż 200 linii kończy się skrótem z liczbą pominiętych.\n\nŚwiadomie odpuściłem obrazy, klikalne linki, HTML, LaTeX i mermaid — link pokazuje się jako podkreślony tekst z adresem w nawiasie, obraz jako podpis z adresem; notatka opisuje to razem z kosztem renderu. Jedno odstępstwo od zapisu w zleceniu: listy numerowane zachowują swoje numery zamiast dostać kropkę, bo numer niesie informację — reszta list ma punktor.\n\nSprawdzone realnym uruchomieniem: budowanie bez błędów, 231 testów jednostkowych i 15 integracyjnych zielonych, demo 39/39, a oba zrzuty (960×608 i ten sam ekran przy 40 kolumnach) obejrzałem — nagłówek, lista, kod z etykietą, tabela i cytat są czytelne, nic nie nachodzi. Prawdziwego strumieniowania tokenów w tej wersji pętli jeszcze nie ma (model przysyła jedną myśl na krok), więc rosnący w miejscu blok jest przygotowany i przetestowany, ale pokaże się dopiero, gdy dojdzie streaming.\n\nNastępny krok wart zlecenia: przenieść ten sam render do eksportu i kopiowania sesji, żeby zapisany tekst też niósł strukturę odpowiedzi.",
+  "last_reply": "Program terminalowy ArndtAi jest gotowy: ekran sesji i lista sesji, przewijana historia zdarzeń, pole na zadanie na dole oraz pasek stanu z krokami, budżetem i odmowami, a wywołania narzędzi widać na żywo — zrzut ekranu zapisuje się jako obraz, bez otwierania okna i bez zabierania fokusu. Sprawdziłem to z prawdziwym wejściem: wpisałem zadanie w terminalu i zobaczyłem zapis pliku, odczyt i wynik, a także zachowanie przy małych i zmienianych rozmiarach ekranu. Budowanie przechodzi bez ostrzeżeń, 252 testy są zielone, demo daje 39/39, a zrzut 960×608 nie jest pusty; narzędzia sprawdzające Craft Anything nie były w tej sesji podłączone, więc te same sprawdziany uruchomiłem bezpośrednio. W tej rundzie dołożyłem dwa trwałe testy pilnujące zrzutu ekranu przez zwykłe wejście programu (domyślny i zadany rozmiar kadru oraz czytelny błąd przy braku nazwy pliku) i opisałem je w dokumentacji trybu terminalowego. Różnice względem oryginału są świadome: liczniki pokazują znaki, a nie tokeny, brak pełnych tabel i diagramów oraz przycisku zatrzymania w trakcie tury. Następny krok wart zamówienia to wyszukiwanie w pamięci albo próba na prawdziwym modelu.",
   "asset_budget_usd": 0.0,
   "generate_assets": false,
   "start_files": [

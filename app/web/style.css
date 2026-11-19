@@ -383,7 +383,7 @@ code, pre, .mono { font-family: var(--mono); }
 
 .events {
   margin: 0;
-  padding: 10px 18px 28px;
+  padding: 10px 18px 40px;
   list-style: none;
   overflow-y: auto;
   flex: 1;

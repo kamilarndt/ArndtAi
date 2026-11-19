@@ -285,6 +285,13 @@ ardntai --screenshot-welcome /tmp/welcome-83.png 83x38
 ardntai --screenshot-resume  /tmp/resume-85.png  85x53
 ```
 
+Ścieżkę CLI tych zrzutów pilnują testy integracyjne (`tests/cli.rs`):
+`screenshot_option_writes_a_non_blank_png` sprawdza kod 0, sygnaturę PNG,
+kadr 960×608 i brak resztek `.agent/screenshot-ws`;
+`screenshot_option_takes_a_custom_size_and_rejects_a_missing_path` sprawdza
+`83x38` → 664×608 oraz brak ścieżki → kod 2. To ta sama komenda, którą
+uruchamia Craft Anything po każdym budowaniu.
+
 Rasteryzator rysuje braille i ramki w pełnej komórce 8×16: punkt braille ma
 3×3 px (2 kolumny × 4 rzędy), a `│` przechodzi przez całe 16 px, więc boki
 panelu nie są kreskowane, a narożniki `┌ ┐ └ ┘` i trójniki `├ ┤` domykają

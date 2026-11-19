@@ -1207,3 +1207,50 @@ fn killing_the_process_inside_the_tool_leaves_the_step_abandoned() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `--screenshot` to komenda, ktora Craft Anything uruchamia po kazdym
+/// budowaniu: musi zapisac prawdziwy, niepusty PNG i skonczyc sie kodem 0
+/// bez terminala i bez okna. Sprawdzamy tez, ze po zrzucie nie zostaje
+/// jednorazowy workspace `.agent/screenshot-ws`.
+#[test]
+fn screenshot_option_writes_a_non_blank_png() {
+    let dir = temp_dir("screenshot");
+    let out = run(&dir, &["--screenshot", "ekran.png"]);
+    assert_eq!(out.code, 0, "stderr: {}", out.stderr);
+
+    let bytes = std::fs::read(dir.join("ekran.png")).expect("zrzut powinien powstac");
+    assert_eq!(&bytes[..8], &[0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a]);
+    let width = u32::from_be_bytes([bytes[16], bytes[17], bytes[18], bytes[19]]);
+    let height = u32::from_be_bytes([bytes[20], bytes[21], bytes[22], bytes[23]]);
+    assert_eq!((width, height), (960, 608), "domyslny kadr to 120x38 znakow");
+    assert!(bytes.len() > 10_000, "zrzut nie moze byc pusty");
+
+    assert!(
+        !dir.join(".agent").join("screenshot-ws").exists(),
+        "workspace zrzutu ma byc usuniety"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Rozmiar kadru z argumentu (`83x38`) i blad bez sciezki — oba wchodza przez
+/// to samo wejscie CLI, wiec testuja `size_arg` oraz kod wyjscia 2.
+#[test]
+fn screenshot_option_takes_a_custom_size_and_rejects_a_missing_path() {
+    let dir = temp_dir("screenshot-size");
+    let out = run(&dir, &["--screenshot", "waski.png", "83x38"]);
+    assert_eq!(out.code, 0, "stderr: {}", out.stderr);
+
+    let bytes = std::fs::read(dir.join("waski.png")).expect("zrzut powinien powstac");
+    let width = u32::from_be_bytes([bytes[16], bytes[17], bytes[18], bytes[19]]);
+    let height = u32::from_be_bytes([bytes[20], bytes[21], bytes[22], bytes[23]]);
+    assert_eq!((width, height), (83 * 8, 38 * 16), "83 kolumny x 38 wierszy");
+
+    let missing = run(&dir, &["--screenshot"]);
+    assert_eq!(missing.code, 2, "brak sciezki to blad uzycia");
+    assert!(
+        missing.stderr.contains("wymaga sciezki"),
+        "stderr: {}",
+        missing.stderr
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

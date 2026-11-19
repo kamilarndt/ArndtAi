@@ -94,3 +94,10 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   CWD: app
   EVIDENCE: 2026-11-19, exit 0, 2/2 zielone. Krok `done` wraca z zapisanego wyniku (`tool_result_cached`, plik nietknięty), krok `proposed` bez wyniku jest `abandoned` (`tool_result_skipped`, `crash_before_result`). Mutanty: `same=false` → test 1 czerwony; `abandoned=false` → test 2 czerwony (proces wisi na FIFO, limit 30 s go ubija).
   NOTE: trzy testy; trzeci (`mcp_resume_replays_a_done_step_without_reexecuting_it`) idzie ścieżką domyślną (perimetr MCP) i pokazuje, że serwer oddaje wynik z `steps.result_json` — plik nie powstaje ponownie, mimo `ok=true` w wyniku. Wcześniejsza nota o „drugim wykonaniu przez MCP" była błędna: mieszano transporty (pierwszy bieg `--no-mcp`, wznowienie z MCP).
+
+- [x] G16: Faza C — web UI czyta kontrakt eventów bez zmian w rdzeniu
+  CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
+  EXPECT: 232 unit + 20 integration, exit 0; demo 39/39
+  CWD: app
+  EVIDENCE: 2026-11-19 — `app/web/` (HTML+JS, zero zależności); w Orca browser na `http://127.0.0.1:8765/app/web/`: 12/12 typów `kind`, konsola bez wpisów; dopisanie pełnej linii → +1 wiersz w 2 s bez przeładowania; JSON bez `\n` → 0 nowych wierszy i 0 błędów, po dopisaniu `\n` → wiersz z treścią; `sessionUrl('../../etc/passwd')` → „zła nazwa sesji”; filtr `kind` ukrywa i pokazuje wiersze. Zrzut `app/shots/faza-c-sesja.png`; `checks/round-18/` z CA.
+  NOTE: MVP czyta wyłącznie JSONL; `state.db` i sterowanie zadaniami są poza zakresem. Render markdown w web UI — kolejny krok.

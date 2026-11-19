@@ -10,7 +10,7 @@ po SIGKILL, Python core (ADR-004).
 
 | obszar | dowód |
 |---|---|
-| pętla + bramki | `cargo test` → **232 unit + 18 integration**, exit 0; `cargo run -- demo` → 39/39 |
+| pętla + bramki | `cargo test` → **232 unit + 20 integration**, exit 0; `cargo run -- demo` → 39/39 |
 | trwały stan, wznowienie | nowa tura liczy kroki dalej (`max+1`), replay tylko w turze |
 | idempotencja, sandbox | `mcp::tests`, `tools::tests`, `store::tests` |
 | narzędzia | 5: `fs.read`, `fs.write`, `fs.append`, `notify.send`, `skill.load` |
@@ -21,6 +21,7 @@ po SIGKILL, Python core (ADR-004).
 | skille | `skills/<nazwa>/SKILL.md`, trzy katalogi, lista w prompcie (max 20), treść przez `/skill` lub `skill.load` (8 KB) |
 | markdown | nagłówki, listy, kod z podświetlaniem (rust/json/bash/toml), tabela, cytat; surowe w wynikach narzędzi |
 | testy na żywo | `scripts/live_test.py`, 8/8 (realny model OC-Go, pty + pyte) |
+| zrzut `--screenshot` | dwa testy w `app/tests/cli.rs` (PNG 960×608, rozmiar `83x38`, brak ścieżki → exit 2) — dodane przez CA w rundzie 19 |
 | kill -9 | `app/tests/cli.rs` — trzy testy na prawdziwym SIGKILL: krok `done` wraca z wyniku, `proposed` → `abandoned`, perimetr MCP też nie powtarza; G15 w `GATES.md` |
 | backfill FTS | baza bez `user_version` po migracji trafia w wyszukiwaniu — `store::tests::backfill_indexes_transcripts_written_before_fts_existed` (dowód: po usunięciu `rebuild` test jest czerwony) |
 | kontrakty | `mcp.md` v0.2 (+`fs.append`), `events.md` (+`repair`, tabele M1) |

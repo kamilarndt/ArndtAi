@@ -73,6 +73,8 @@ const state = {
   listingKey: "",
   conn: "wait",
   listingOk: true,
+  renderKey: "",
+  renderedCount: 0,
 };
 
 const tail = {
@@ -782,11 +784,12 @@ function head(body, label, detail, extra) {
 }
 
 function buildRow(ev, idx) {
+  const failedResult = ev.kind === "tool_result" && ev.data.ok === false;
   const li = el("li", "ev ev-" + ev.kind);
-  if (ev.kind === "tool_result" && ev.data.ok === false) li.classList.add("fail");
+  if (failedResult) li.classList.add("fail");
 
   li.appendChild(el("span", "ev-time", clockTime(ev.at)));
-  li.appendChild(el("span", "ev-icon", ICON[ev.kind] || "•"));
+  li.appendChild(el("span", "ev-icon", failedResult ? "✕" : ICON[ev.kind] || "•"));
   const body = el("div", "ev-body");
   li.appendChild(body);
   li.dataset.idx = String(idx);
@@ -939,19 +942,34 @@ function renderEvents(scrollToBottom) {
   const keep = list.scrollTop;
 
   const needle = normalize(state.query.trim());
-  clear(list);
-  let visible = 0;
+  const key = KINDS.filter((k) => state.filter.has(k)).join(",") + "§" + needle;
 
-  state.events.forEach((ev, idx) => {
+  // Przy nowych eventach i niezmienionym filtrze dopisujemy wiersze zamiast
+  // budować całą listę od nowa — duże sesje zostają tanie.
+  const appendOnly =
+    !scrollToBottom &&
+    key === state.renderKey &&
+    state.renderedCount > 0 &&
+    state.events.length >= state.renderedCount;
+
+  if (!appendOnly) {
+    clear(list);
+    state.renderedCount = 0;
+  }
+  state.renderKey = key;
+
+  for (let idx = state.renderedCount; idx < state.events.length; idx++) {
+    const ev = state.events[idx];
     const row = buildRow(ev, idx);
     const inKind = state.filter.has(ev.kind);
     const textHit = !needle || normalize(row.textContent).includes(needle);
     if (!inKind || !textHit) row.hidden = true;
-    else visible += 1;
     list.appendChild(row);
-  });
+  }
+  state.renderedCount = state.events.length;
 
   syncKindCounts();
+  const visible = list.querySelectorAll(".ev:not([hidden])").length;
   $("#visible-count").textContent = state.events.length
     ? `widoczne ${visible} z ${state.events.length}`
     : "";

@@ -90,8 +90,12 @@ def build(base: int, pad: int) -> list[dict[str, Any]]:
     events = core_events(base)
     if pad <= 0:
         return events
-    # Fillery wchodzą przed `summary`, żeby podsumowanie zostało ostatnie.
-    return events[:-1] + filler_events(base, pad) + [events[-1]]
+    # Fillery wchodzą przed `summary` (kontrakt: podsumowanie jest ostatnie),
+    # a znacznik czasu podsumowania przesuwa się za nie, żeby plik był
+    # chronologiczny także po `at`.
+    summary = dict(events[-1])
+    summary["at"] = base + 12 + pad + 60
+    return events[:-1] + filler_events(base, pad) + [summary]
 
 
 def main() -> int:

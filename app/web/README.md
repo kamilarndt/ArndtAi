@@ -28,7 +28,7 @@ tworzy `.agent/sessions/fixture-12.jsonl` — 12 linii, po jednym evencie każde
 typu (`.agent/` jest w `.gitignore`, więc repo zostaje czyste). Odśwież stronę:
 sesja pojawi się na liście i pokaże wszystkie 12 wariantów.
 
-Wariant z 100+ eventami ( filtr i szukanie):
+Wariant z 100+ eventami (filtr i szukanie):
 
 ```sh
 python3 app/web/fixture_events.py --out .agent/sessions --name fixture-duza --pad 60
@@ -38,6 +38,13 @@ albo do dowolnego katalogu, bez wpływu na repo:
 
 ```sh
 python3 app/web/fixture_events.py --out /tmp/fx
+```
+
+Jeśli sesje leżą w `app/.agent/sessions` (tak robi `cargo run` uruchamiany z
+`app/`), uruchom serwer w katalogu `app/` i wejdź na `http://127.0.0.1:8765/web/`:
+
+```sh
+cd app && python3 -m http.server 8765
 ```
 
 ## Co robi

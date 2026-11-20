@@ -1,0 +1,44 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gates:
+    name: make verify (build, testy, demo, dowody)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            app/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('app/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Python
+        run: python3 --version
+
+      - name: make verify
+        run: make verify
+
+      - name: Artefakt dowodów
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checks-evidence
+          path: |
+            checks/evidence.json
+            craft.json
+          if-no-files-found: warn

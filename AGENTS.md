@@ -54,9 +54,13 @@ make test                   # tylko cargo test
 git config core.hooksPath scripts/hooks   # raz na klon: hook pre-commit = make verify
 ```
 
-Hook `pre-commit` odrzuca commit, gdy `make verify` padnie, i dokłada
-odswiezone `checks/evidence.json` i `craft.json` do tego samego commita.
-Logi `checks/*.log` są generowane przy każdym przebiegu i nie idą do historii.
+Hook `pre-commit` odrzuca commit, gdy `make verify` padnie (a `pre-push`
+sprawdza to samo przed wypchnięciem). Dowody `checks/*.log`,
+`checks/evidence.json` i `craft.json` są **generowane przy każdym przebiegu**
+i nie idą do historii — powód: zawierają czasy, które zmieniają się bez zmiany
+kodu. W repo zostają zrzuty (`app/shots/`, `checks/**/*.png`) i dokumenty.
+Uczciwość bramki: „dowód przed twierdzeniem” dotyczy istnienia sprawdzalnego
+wyniku, nie commitowania zmiennych znaczników czasu.
 
 ## Zasady pracy
 

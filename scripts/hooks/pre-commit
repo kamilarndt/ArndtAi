@@ -16,9 +16,7 @@ if ! make verify; then
     exit 1
 fi
 
-# Tylko dowody — zadnych cudzych zmian w indeksie.
-if [ -d checks ] || [ -f craft.json ]; then
-    git add checks craft.json
-fi
+# Dowody (checks/evidence.json, craft.json) sa poza historia — patrz .gitignore.
+# Hook pilnuje tylko, czy bramka przechodzi.
 
 exit 0

@@ -40,3 +40,11 @@ Nie znaleziono — brak pomiaru (kolumna „Sygnał" nie istnieje bez git).
 _Starzenie i okablowanie: nie zmierzone (brak git). Etap pochodzi z `docs/STATUS.md`
 z 14 listopada i jest tylko tak świeży, jak data obok niego._
 <!-- open-steps:end -->
+
+## 2026-11-20: dokończenie agenta
+
+Dodane i dowiedzione (G27-G30): `consolidate` (graf pamięci), `ingest` +
+`memory.ingest` (second brain), `tick --run` (sesje `worker-*`, lock blokuje),
+`improve` (propozycje bez auto-apply). Decyzje: ADR-004 (pluginy poza zakresem),
+ADR-005 (CI lokalne). Bramka: 260 unit + 27 integration, demo 39/39,
+`make verify` OK.

@@ -84,6 +84,8 @@ cargo run -- -w /tmp/ws "notify gotowe"
 cargo run -- -w /tmp/ws --resume        # wznowienie po przerwaniu
 ```
 
+Polecenia: `run`, `demo`, `tui`, `skills`, `status`, `tick`, `tools`.
+
 Flagi: `-w/--workspace`, `--provider mock|anthropic|openai`, `--steps N`,
 `--memory lite|pro|ultra`, `--facts`/`--no-facts`, `--mcp|--no-mcp`,
 `--resume`, `-q`.

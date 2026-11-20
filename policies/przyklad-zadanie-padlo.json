@@ -1,0 +1,7 @@
+{
+  "name": "przyklad-zadanie-padlo",
+  "when": "session_failed",
+  "cooldown_hours": 6,
+  "shadow_days": 0,
+  "note": "Ostatnie zadanie nie doszlo do konca — sprawdz powod w transkrypcie"
+}

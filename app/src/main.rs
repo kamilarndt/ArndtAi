@@ -11,6 +11,7 @@ mod context;
 mod markdown;
 mod mcp;
 mod models;
+mod proactive;
 mod provider;
 mod schema;
 mod sessions;
@@ -121,6 +122,23 @@ fn run_cli() -> i32 {
         "mcp" => serve_mcp(&args[1..]),
         "tools" => {
             list_tools();
+            0
+        }
+        "tick" => {
+            let ws = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+            let now = context::now_ts();
+            let hits = proactive::tick(&ws, now);
+            for hit in &hits {
+                println!(
+                    "{} {} — {}",
+                    if hit.shadow { "shadow" } else { "notatka" },
+                    hit.policy,
+                    hit.effect
+                );
+            }
+            if hits.is_empty() {
+                println!("brak trafien (default-deny)");
+            }
             0
         }
         "skills" => match memory_arg(&args[1..], "skills") {
@@ -248,6 +266,7 @@ fn usage() {
     println!("  arndtai mcp [--workspace FOLDER]   — serwer MCP po stdio (perimeter)");
     println!("  arndtai tools     — lista narzedzi perimeteru");
     println!("  arndtai skills [--memory lite|pro|ultra]  — osobowosc, skille i pamiec projektu");
+    println!("  arndtai tick                               — reguly proaktywne z policies/*.json");
     println!("  arndtai status [--memory lite|pro|ultra]  — stan workspace'u (sesje, mozg, outbox)");
     println!("  arndtai --screenshot plik.png [WxH]   — zrzut ekranu sesji (960x608 = 120x38)");
     println!("  arndtai --screenshot-welcome plik.png — zrzut ekranu powitalnego");

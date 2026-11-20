@@ -163,3 +163,18 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   („Użytkownik preferuje krótkie odpowiedzi po polsku.").
   NOTE: ekstrakcja kosztuje jedno dodatkowe wywołanie modelu na zadanie;
   TUI jeszcze jej nie woła (tylko CLI).
+
+- [x] G23: proaktywność na regułach lokalnych (`ardntai tick`)
+  CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
+  EXPECT: 245 unit + 26 integration, exit 0; demo 39/39
+  CWD: app
+  EVIDENCE: 2026-11-20 — `app/src/proactive.rs`: reguły z `policies/*.json`,
+  wyzwalacze `session_failed`/`denied`/`idle_hours`, **default-deny** (brak
+  reguły → wpis w `.agent/policies.log`, zero akcji), `cooldown_hours` blokuje
+  powtórkę, `shadow_days` loguje bez efektu. Efekt: wiersz w
+  `.agent-memory/notes.md`. Testy: `without_a_policy_nothing_happens_but_the_log_says_so`,
+  `a_failed_session_fires_once_and_respects_the_cooldown`, `a_shadow_policy_only_logs`.
+  Na żywo w `/tmp/ws-proact`: `--steps 1` → `FAILED_BUDGET`, `tick` → notatka
+  z `status=FAILED_BUDGET`, drugi `tick` → „brak trafien" (cooldown 6 h).
+  NOTE: format JSON zamiast YAML (spec 06) — YAML wymagałby nowej zależności;
+  brak `worker-<task_id>`, limitu równoległości i godzin ciszy — to kolejny krok.

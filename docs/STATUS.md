@@ -104,3 +104,14 @@ następnym starcie. Dotyczy CLI, TUI i zadań uruchamianych z web UI
 i dopisuje do `.agent-memory/facts.md` maks. 3 trwałe fakty (bez duplikatów).
 `pro` wymaga `--facts`; `lite` i tryb offline nic nie robią. TUI jeszcze nie
 woła ekstrakcji — tylko CLI.
+
+## Proaktywność (2026-11-20)
+
+`ardntai tick` sprawdza reguły z `policies/*.json` bez modelu i bez sieci:
+`session_failed`, `denied`, `idle_hours`. Default-deny — brak reguły to wpis
+w `.agent/policies.log`, nie akcja. `cooldown_hours` chroni przed powtórką,
+`shadow_days` trzyma świeżą regułę w trybie obserwacji. Efekt: wiersz
+w `.agent-memory/notes.md` (czytany przez pamięć `pro`/`ultra`).
+
+Otwarte ze specu 06: `worker-<task_id>` (sesja robocza), limit równoległości,
+budżet uwagi i godziny ciszy, `trigger_inbox` po stronie perimetru.

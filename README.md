@@ -121,3 +121,11 @@ wykonaniu krok jest `done` w `.agent/state.db`. Odmowa kończy się wpisem
 - `docs/contracts/events.md` — schemat eventów i tabel.
 - `docs/re/README.md` — decyzje, odstępstwa, znane braki.
 - `audyty/arndtai-2026-11-13.md` — audyt wejściowy (F1-F32).
+
+## CI
+
+`make verify` (build, testy, demo, dowody) uruchamia się w trzech miejscach:
+hook `pre-commit`, hook `pre-push` i — jeśli konto ma minuty — GitHub Actions
+(`.github/workflows/verify.yml`). Dziś Actions nie startuje na tym koncie
+(„recent account payments have failed or your spending limit needs to be
+increased"), więc bramką jest para hooków lokalnych plus `make ci`.

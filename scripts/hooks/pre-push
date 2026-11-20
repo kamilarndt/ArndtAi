@@ -1,0 +1,8 @@
+#!/bin/sh
+# Bramka przed wypchnięciem: to samo, co pre-commit, ale na wypadek commitów
+# zrobionych z `--no-verify` albo przez inny klon.
+set -e
+ROOT=$(git rev-parse --show-toplevel)
+cd "$ROOT"
+echo "pre-push: make verify…"
+make verify

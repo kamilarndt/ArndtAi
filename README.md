@@ -99,7 +99,7 @@ Komendy pomocnicze: `mcp` (serwer MCP na stdin/stdout), `skills`, `status`,
 | `ardntai run "<zadanie>"` | jedno zadanie: pętla, bramki, perimetr MCP |
 | `ardntai run --resume "<dopisek>"` | wznowienie ostatniej sesji (at-most-once) |
 | `ardntai tui` | terminalowy interfejs (historia, `/model`, `/skills`, `/export`) |
-| `ardntai demo` | 39 sprawdzeń na realnych artefaktach |
+| `ardntai demo` | 47 sprawdzeń na realnych artefaktach |
 | `ardntai status` | stan workspace: sesje, pamięć, outbox, model |
 | `ardntai skills` | osobowość, skille i poziom pamięci |
 | `ardntai tick` | reguły proaktywne z `policies/*.json` (default-deny) |

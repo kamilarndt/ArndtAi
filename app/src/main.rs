@@ -1129,6 +1129,73 @@ fn demo() -> i32 {
             && context::MemoryLevel::Ultra.as_str() == "ultra",
     );
 
+    // --- 12. drugi mozg: vault i ingest ---
+    let ws_vault = base.join("vault");
+    let _ = std::fs::create_dir_all(&ws_vault);
+    let _ = std::fs::write(ws_vault.join("nota.md"), "# Nota\n\ntresc");
+    let saved = vault::ingest(&ws_vault, "nota.md", "Nota");
+    check(&mut results, "vault: ingest zapisuje i zwraca sciezke", saved.is_ok());
+    check(
+        &mut results,
+        "vault: index ma wpis",
+        read_text(&ws_vault.join(".agent-memory").join("vault").join("index.md")).contains("[Nota](nota.md)"),
+    );
+    check(
+        &mut results,
+        "vault: zrodlo poza workspace odrzucone",
+        vault::ingest(&ws_vault, "../etc/passwd", "x").is_err(),
+    );
+
+    // --- 13. konsolidacja pamieci ---
+    let ws_graph = base.join("graph");
+    let _ = std::fs::create_dir_all(ws_graph.join(".agent-memory"));
+    let _ = std::fs::write(
+        ws_graph.join(".agent-memory").join("facts.md"),
+        "- pamiec pro czyta fakty\n- web czyta jsonl\n",
+    );
+    let graph = consolidate::consolidate(&ws_graph, context::now_ts());
+    check(
+        &mut results,
+        "konsolidacja: graf z klastrami",
+        graph
+            .as_ref()
+            .map(|r| r.clusters == 2)
+            .unwrap_or(false),
+    );
+    check(
+        &mut results,
+        "konsolidacja: graph.md istnieje",
+        ws_graph.join("memory").join("graph.md").exists(),
+    );
+
+    // --- 14. proaktywnosc: default-deny ---
+    let ws_tick = base.join("tick");
+    let _ = std::fs::create_dir_all(&ws_tick);
+    let hits = proactive::tick(&ws_tick, context::now_ts());
+    check(&mut results, "tick: brak reguly = brak akcji", hits.is_empty());
+    check(
+        &mut results,
+        "tick: default-deny zostawia slad w logu",
+        read_text(&ws_tick.join(".agent").join("policies.log")).contains("brak reguly"),
+    );
+
+    // --- 15. eval gate ---
+    let ws_eval = base.join("eval");
+    let _ = std::fs::create_dir_all(ws_eval.join("evals").join("cases"));
+    let _ = std::fs::write(
+        ws_eval.join("evals").join("cases").join("zapis.json"),
+        r#"{"name":"zapis","task":"write a.txt :: alfa","expect":{"a.txt":"alfa"}}"#,
+    );
+    let cases = eval::load_cases(&ws_eval).unwrap_or_default();
+    let outcome = cases
+        .first()
+        .map(|case| eval::run_case(&ws_eval.join(".agent").join("eval"), case, 1));
+    check(
+        &mut results,
+        "eval: pass^1 na przypadku zgodnym",
+        outcome.as_ref().map(|o| o.pass_k()).unwrap_or(false),
+    );
+
     let passed = results.iter().filter(|(_, ok)| *ok).count();
     for (name, ok) in &results {
         println!("  {} {}", if *ok { "OK  " } else { "FAIL" }, name);

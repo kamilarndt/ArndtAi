@@ -84,9 +84,9 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   CHECK: cd app && cargo build --quiet && cargo test --quiet && cargo run --quiet -- demo
   EXPECT: testy zielone, DEMO OK
   CWD: app
-  EVIDENCE: 231 unit + 15 integration, exit 0; demo 39/39; `docs/re/tui-parity.md` tabela stanu; zrzuty `app/shots/{r14-*,settings,ask,light,r16-skill,r17-*,markdown*}.png` (960×608 i 40 kolumn); `/export` na żywo → `eksport-20261114-0242.md` z nagłówkiem i krokami; `/copy` → `skopiowano 65 znakow (OSC 52)`; `skill.load` na żywo → `215 bajtow`, raport z datą 2026-11-14
+  EVIDENCE: 231 unit + 15 integration, exit 0; demo 47/47; `docs/re/tui-parity.md` tabela stanu; zrzuty `app/shots/{r14-*,settings,ask,light,r16-skill,r17-*,markdown*}.png` (960×608 i 40 kolumn); `/export` na żywo → `eksport-20261114-0242.md` z nagłówkiem i krokami; `/copy` → `skopiowano 65 znakow (OSC 52)`; `skill.load` na żywo → `215 bajtow`, raport z datą 2026-11-14
   NOTE: nie obejmuje voice/share/plugin/workflow/dashboard/subagentów — wymagają runtime'u Groka
-  NOTE: 2026-11-19 — po dodaniu testu backfillu FTS komenda bramki daje 232 unit (15 integration bez zmian); demo 39/39.
+  NOTE: 2026-11-19 — po dodaniu testu backfillu FTS komenda bramki daje 232 unit (15 integration bez zmian); demo 47/47.
 
 - [x] G15: utrata procesu w środku pracy (kill -9) nie powtarza efektu
   CHECK: cd app && cargo test --test cli killing_the_process
@@ -97,7 +97,7 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
 
 - [x] G16: Faza C — web UI czyta kontrakt eventów bez zmian w rdzeniu
   CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
-  EXPECT: 232 unit + 20 integration, exit 0; demo 39/39
+  EXPECT: 232 unit + 20 integration, exit 0; demo 47/47
   CWD: app
   EVIDENCE: 2026-11-19 — `app/web/` (HTML+JS, zero zależności); w Orca browser na `http://127.0.0.1:8765/app/web/`: 12/12 typów `kind`, konsola bez wpisów; dopisanie pełnej linii → +1 wiersz w 2 s bez przeładowania; JSON bez `\n` → 0 nowych wierszy i 0 błędów, po dopisaniu `\n` → wiersz z treścią; `sessionUrl('../../etc/passwd')` → „zła nazwa sesji”; filtr `kind` ukrywa i pokazuje wiersze. Zrzut `app/shots/faza-c-sesja.png`; `checks/round-18/` z CA.
   NOTE: MVP czyta wyłącznie JSONL; `state.db` i sterowanie zadaniami są poza zakresem. Render markdown w web UI — kolejny krok.
@@ -111,21 +111,21 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
 
 - [x] G18: kontrakt eventów v2 — przejścia bramek w transkrypcie
   CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
-  EXPECT: 242 unit + 22 integration, exit 0; demo 39/39
+  EXPECT: 242 unit + 22 integration, exit 0; demo 47/47
   CWD: app
   EVIDENCE: 2026-11-19 — `app/src/agent.rs` pisze `kind: "gate"` z `stage` i `detail` na 8 etapach (RECEIVED, PLANNING, STEP_PROPOSED, SCOPE_CHECK, POLICY_CHECK, EXECUTING, OBSERVE, STOP_CHECK); test `tests/cli.rs::gate_stages_are_written_to_the_transcript` sprawdza obecność i kolejność. TUI ignoruje `gate` (telemetria, testy TUI zielone), web UI rysuje wiersz GATE (sprawdzone w Orca browser: 1 wiersz, 13/13 typów, konsola czysta). Fixture: `python3 app/web/fixture_events.py --out /tmp/fx-gate` → 13 linii.
   NOTE: `docs/contracts/events.md` podniesiony do v2; konsument v1 czyta dalej (nieznany `kind` pomija).
 
 - [x] G19: v0.3 — zadanie uruchamiane z web UI (serwer w Pythonie, rdzeń bez zmian)
   CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
-  EXPECT: 242 unit + 22 integration, exit 0; demo 39/39
+  EXPECT: 242 unit + 22 integration, exit 0; demo 47/47
   CWD: app
   EVIDENCE: 2026-11-19 — `app/web/serve.py` (stdlib: http.server, subprocess), bind 127.0.0.1; `POST /api/run` uruchamia `ardntai run -w … --provider mock`, zwraca session id, `GET /api/status`, `POST /api/stop`, `GET /api/sessions`; `/.agent/sessions/<id>.jsonl` z Range (tail). Zmierzone: `POST {"task":"write a.txt :: z-web"}` → DONE, plik `a.txt`; drugi POST w trakcie → **409**; `POST {"task":"../../etc/passwd"}` → traktowane jako treść, brak odczytu plików; UI: formularz u góry, 6 sesji, 17 wierszy z 10 `GATE`, konsola bez wpisów; zrzut `app/shots/v0.3-web-run.png`. `app/Cargo.toml` bez nowych zależności.
   NOTE: bez serwera (samo `python3 -m http.server`) UI działa jak w v0.1: tylko odczyt, kontrolki wyłączone.
 
 - [x] G20: pamięć pro/ultra — epizody zapisywane i ładowane
   CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
-  EXPECT: 242 unit + 23 integration, exit 0; demo 39/39
+  EXPECT: 242 unit + 23 integration, exit 0; demo 47/47
   CWD: app
   EVIDENCE: 2026-11-19/20 — `agent.rs::record_episode` dopisuje wiersz
   `- <ts> · <status> · kroki N · narzędzia M · odmowy K · <zadanie>` do
@@ -139,7 +139,7 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
 
 - [x] G21: jeden przebieg na workspace (lock pliku)
   CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
-  EXPECT: 242 unit + 24 integration, exit 0; demo 39/39
+  EXPECT: 242 unit + 24 integration, exit 0; demo 47/47
   CWD: app
   EVIDENCE: 2026-11-20 — `agent::WorkspaceLock` trzyma `.agent/run.lock` z pidem;
   żywy pid blokuje drugi przebieg (exit 2, `FAILED_LOCKED`, komunikat
@@ -151,7 +151,7 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
 
 - [x] G22: pamięć ultra — ekstrakcja faktów po zadaniu
   CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
-  EXPECT: 242 unit + 26 integration, exit 0; demo 39/39
+  EXPECT: 242 unit + 26 integration, exit 0; demo 47/47
   CWD: app
   EVIDENCE: 2026-11-20 — `provider::extract_facts` robi osobne, nie-strumieniowe
   wywołanie z prośbą o JSON `{"facts":[...]}` (max 3, filtr „przetrwa 30 dni”);
@@ -166,7 +166,7 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
 
 - [x] G23: proaktywność na regułach lokalnych (`ardntai tick`)
   CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
-  EXPECT: 245 unit + 26 integration, exit 0; demo 39/39
+  EXPECT: 245 unit + 26 integration, exit 0; demo 47/47
   CWD: app
   EVIDENCE: 2026-11-20 — `app/src/proactive.rs`: reguły z `policies/*.json`,
   wyzwalacze `session_failed`/`denied`/`idle_hours`, **default-deny** (brak
@@ -191,7 +191,7 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
 
 - [x] G25: trigger_inbox pisany przez perimetr
   CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
-  EXPECT: 248 unit + 26 integration, exit 0; demo 39/39
+  EXPECT: 248 unit + 26 integration, exit 0; demo 47/47
   CWD: app
   EVIDENCE: 2026-11-20 — `tools::call`/`tools::resolve` zapisują surowe odmowy
   do `.agent/trigger_inbox.jsonl` (`kind: denied`, `tool`, `reason`); błąd
@@ -236,7 +236,7 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
 
 - [x] G29: sesje robocze `worker-*` i `tick --run`
   CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
-  EXPECT: 257 unit + 27 integration, exit 0; demo 39/39
+  EXPECT: 257 unit + 27 integration, exit 0; demo 47/47
   CWD: app
   EVIDENCE: 2026-11-20 — `Policy.action` (JSON) uruchamiany przez
   `ardntai tick --run`: proces `run -w <ws> "<action>"` z `ARNDTAI_WORKER=<reguła>`,

@@ -38,7 +38,7 @@ korzeń trzyma materiał i dokumenty, aplikacja żyje w `app/`.
 cd app
 cargo build                 # debug
 cargo test                  # 40 unit + 4 integration
-cargo run -- demo           # 39 sprawdzeń na realnych artefaktach
+cargo run -- demo           # 47 sprawdzeń na realnych artefaktach
 cargo run -- tui            # tryb terminalowy (docs/TUI.md)
 cargo run -- -w /tmp/ws "write a.txt :: tresc; read a.txt"
 cargo run -- -w /tmp/ws --resume "dopisz do a.txt druga linie"   # --resume wymaga tekstu zadania

@@ -15,12 +15,19 @@ pub const MAX_READ_BYTES: usize = 4_194_304;
 
 /// Runda 16: `skill.load` jest read-only jak `fs.read` — czyta odkryte skille
 /// z workspace'u i nie dotyka dysku poza odczytem `SKILL.md`.
-pub const NAMES: [&str; 5] = ["fs.read", "fs.write", "fs.append", "notify.send", "skill.load"];
+pub const NAMES: [&str; 6] = [
+    "fs.read",
+    "fs.write",
+    "fs.append",
+    "notify.send",
+    "skill.load",
+    "memory.ingest",
+];
 
 /// Narzedzia zmieniajace stan. Detektor dryfu liczy tylko je — `fs.read`
 /// jest read-only, wiec nie wchodzi do okna i nie moze wywolac odmowy.
 pub fn is_mutating(name: &str) -> bool {
-    matches!(name, "fs.write" | "fs.append" | "notify.send")
+    matches!(name, "fs.write" | "fs.append" | "notify.send" | "memory.ingest")
 }
 
 pub fn describe() -> Vec<(&'static str, &'static str, &'static str)> {
@@ -39,6 +46,11 @@ pub fn describe() -> Vec<(&'static str, &'static str, &'static str)> {
             "fs.append",
             "{\"path\":\"wzgledna/sciezka\",\"content\":\"dopisek\"}",
             "dopisuje tresc na koncu pliku w workspace (tworzy go, limit 1 MB) i zwraca {bytes_written}",
+        ),
+        (
+            "memory.ingest",
+            "{\"path\":\"nota.md\",\"title\":\"Nota\"}",
+            "kopiuje plik do second brainu (.agent-memory/vault) i dopisuje index",
         ),
         (
             "notify.send",
@@ -105,6 +117,23 @@ pub fn input_schema(name: &str) -> Option<Value> {
                 "name": { "type": "string", "description": "nazwa skilla z listy w promptcie (bez sciezki)" }
             },
             "required": ["name"],
+            "additionalProperties": false
+        })),
+        "memory.ingest" => Some(json!({
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "maxLength": crate::schema::MAX_TEXT_FIELD_BYTES,
+                    "description": "wzgledna sciezka pliku w workspace (zrodlo)"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "tytul wpisu w index.md (domyslnie nazwa pliku)"
+                }
+            },
+            "required": ["path"],
             "additionalProperties": false
         })),
         _ => None,
@@ -680,6 +709,30 @@ pub fn call(name: &str, args: &Value, workspace: &Path) -> ToolResult {
         // Runda 16: `skill.load` — te same bramki co inne narzędzia: allowlista
         // (sprawdzana w pętli), brak ścieżek (nazwa nie może być ścieżką),
         // nazwa musi być na odkrytej liście.
+        "memory.ingest" => {
+            let Some(rel) = path_arg(args) else {
+                return ToolResult::error("SCHEMA_ERROR", "brak path");
+            };
+            let title = args
+                .get("title")
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| {
+                    std::path::Path::new(&rel)
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("notatka")
+                        .to_string()
+                });
+            match crate::vault::ingest(workspace, &rel, &title) {
+                Ok(saved) => {
+                    let bytes = saved.len();
+                    ToolResult::success(json!({ "saved": saved }), bytes)
+                }
+                Err(error) => ToolResult::error("DENIED", error),
+            }
+        }
         "skill.load" => {
             let name = args
                 .get("name")
@@ -912,6 +965,28 @@ mod tests {
     }
 
     /// Ten sam limit dla `channel`: nazwa kanalu tez trafia do linii logu.
+    #[test]
+    fn memory_ingest_refuses_a_path_outside_the_workspace() {
+        let ws = temp_ws("ingest-poza");
+        let args = serde_json::json!({"path": "../etc/passwd", "title": "x"});
+        let result = call("memory.ingest", &args, &ws);
+        assert!(!result.ok, "poza workspace musi byc odmowa");
+        assert_eq!(result.code.as_deref(), Some("DENIED"));
+        assert!(!ws.join(".agent-memory").exists(), "nic nie moze powstac");
+        let _ = std::fs::remove_dir_all(&ws);
+    }
+
+    #[test]
+    fn memory_ingest_copies_and_indexes() {
+        let ws = temp_ws("ingest-ok");
+        std::fs::write(ws.join("nota.md"), "tresc").unwrap();
+        let args = serde_json::json!({"path": "nota.md", "title": "Nota"});
+        let result = call("memory.ingest", &args, &ws);
+        assert!(result.ok, "{:?}", result.output);
+        assert_eq!(result.output["saved"], ".agent-memory/vault/nota.md");
+        let _ = std::fs::remove_dir_all(&ws);
+    }
+
     #[test]
     fn oversized_channel_is_schema_error() {
         let ws = temp_ws("notify-channel");

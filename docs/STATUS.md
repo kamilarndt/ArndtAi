@@ -131,3 +131,9 @@ budżet uwagi i godziny ciszy, `trigger_inbox` po stronie perimetru.
 `ardntai consolidate` buduje `memory/graph.md` z faktów i epizodów (klastry
 tematyczne, bez modelu). Pusty magazyn nie tworzy pliku. `ultra` czyta ten
 plik w kolejnych przebiegach (`context.rs:156-158`).
+
+## Second brain (2026-11-20)
+
+`.agent-memory/vault/` z `index.md`; `ardntai ingest <plik> [--title ...]` oraz
+narzędzie `memory.ingest` kopiują tekst i dopisują wpis. Pusty na start,
+ingest tylko na jawne polecenie (spec 02). Źródło spoza workspace → `DENIED`.

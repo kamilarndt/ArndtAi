@@ -21,6 +21,7 @@ mod shot;
 mod skills;
 mod store;
 mod tools;
+mod vault;
 mod theme;
 mod tui;
 mod welcome;
@@ -124,6 +125,49 @@ fn run_cli() -> i32 {
         "tools" => {
             list_tools();
             0
+        }
+        "ingest" => {
+            let ws = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+            let mut source: Option<String> = None;
+            let mut title: Option<String> = None;
+            let mut i = 1;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--title" => {
+                        title = args.get(i + 1).cloned();
+                        i += 2;
+                    }
+                    other if !other.starts_with('-') && source.is_none() => {
+                        source = Some(other.to_string());
+                        i += 1;
+                    }
+                    other => {
+                        eprintln!("ingest: nieznany argument {other}");
+                        return 2;
+                    }
+                }
+            }
+            let Some(source) = source else {
+                eprintln!("ingest: podaj plik, np. arndtai ingest nota.md --title \"Nota\"");
+                return 2;
+            };
+            let title = title.unwrap_or_else(|| {
+                Path::new(&source)
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("notatka")
+                    .to_string()
+            });
+            match vault::ingest(&ws, &source, &title) {
+                Ok(saved) => {
+                    println!("zapisane: {saved}");
+                    0
+                }
+                Err(error) => {
+                    eprintln!("{error}");
+                    1
+                }
+            }
         }
         "consolidate" => {
             let ws = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
@@ -289,6 +333,7 @@ fn usage() {
     println!("  arndtai skills [--memory lite|pro|ultra]  — osobowosc, skille i pamiec projektu");
     println!("  arndtai tick [--run]                       — reguly proaktywne z policies/*.json");
     println!("  arndtai consolidate                        — graf pamieci z faktow i epizodow");
+    println!("  arndtai ingest <plik> [--title \"...\"]      — second brain: kopia do .agent-memory/vault");
     println!("  arndtai status [--memory lite|pro|ultra]  — stan workspace'u (sesje, mozg, outbox)");
     println!("  arndtai --screenshot plik.png [WxH]   — zrzut ekranu sesji (960x608 = 120x38)");
     println!("  arndtai --screenshot-welcome plik.png — zrzut ekranu powitalnego");

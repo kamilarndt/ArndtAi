@@ -19,6 +19,8 @@
 | `fs.write` | Zapis pliku w dozwolonym workspace | tak |
 | `fs.append` | Dopisanie na końcu pliku w dozwolonym workspace | tak |
 | `notify.send` | Wysłanie powiadomienia | tak |
+| `skill.load` | Wczytanie treści skilla z listy w promptcie | nie |
+| `memory.ingest` | Kopia pliku workspace do second brainu (`.agent-memory/vault`) + wpis w `index.md` | tak |
 
 ## Wspólne zasady
 

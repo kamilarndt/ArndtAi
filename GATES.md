@@ -219,3 +219,17 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   i brak pliku. Testy: `empty_workspace_writes_nothing`,
   `facts_and_episodes_become_topic_clusters`. Na żywo w `/tmp/ws-mem2`:
   `fakty 0 · epizody 2 · klastry 2`, graf z sekcjami tematycznymi.
+
+- [x] G28: second brain — vault i `memory.ingest`
+  CHECK: cd app && cargo test --quiet
+  EXPECT: 255 unit + 26 integration, exit 0
+  CWD: app
+  EVIDENCE: 2026-11-20 — `vault::ingest` kopiuje tekst do `.agent-memory/vault/<slug>.md`
+  i dopisuje wpis do `index.md` (bez duplikatów); źródło spoza workspace →
+  `DENIED`, nic nie powstaje. Narzędzie `memory.ingest` w perimetrze (`NAMES`
+  6 pozycji, schema, `is_mutating`), podkomenda `ardntai ingest <plik> [--title]`.
+  Testy: `ingest_copies_a_workspace_file_and_indexes_it`,
+  `source_outside_the_workspace_is_refused`, `a_title_without_letters_still_gets_a_slug`,
+  `memory_ingest_refuses_a_path_outside_the_workspace`, `memory_ingest_copies_and_indexes`.
+  Na żywo w `/tmp/ws-vault`: `ingest nota.md --title "Nota Kamila"` → index z wpisem;
+  `ingest ../etc/passwd` → `DENIED`.

@@ -1510,6 +1510,47 @@ fn tick_run_starts_a_worker_session_with_the_policy_prefix() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Eval gate: przypadek zgodny z oczekiwaniem daje exit 0, niezgodny exit 1.
+#[test]
+fn eval_reports_pass_and_fail_with_exit_codes() {
+    let dir = temp_dir("eval-cli");
+    let cases = dir.join("evals").join("cases");
+    std::fs::create_dir_all(&cases).unwrap();
+    std::fs::write(
+        cases.join("dobry.json"),
+        r#"{"name":"dobry","task":"write a.txt :: alfa","expect":{"a.txt":"alfa"}}"#,
+    )
+    .unwrap();
+    let good = run(&dir, &["eval"]);
+    assert_eq!(good.code, 0, "stdout: {}\nstderr: {}", good.stdout, good.stderr);
+    assert!(good.stdout.contains("pass^1 = 1/1"), "stdout: {}", good.stdout);
+
+    std::fs::write(
+        cases.join("zly.json"),
+        r#"{"name":"zly","task":"write a.txt :: alfa","expect":{"a.txt":"beta"}}"#,
+    )
+    .unwrap();
+    let bad = run(&dir, &["eval"]);
+    assert_eq!(bad.code, 1, "stdout: {}\nstderr: {}", bad.stdout, bad.stderr);
+    assert!(bad.stdout.contains("FAIL zly"), "stdout: {}", bad.stdout);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Bez przypadków bramka nie przechodzi (brak dowodu to nie dowód).
+#[test]
+fn eval_without_cases_fails() {
+    let dir = temp_dir("eval-puste");
+    std::fs::create_dir_all(dir.join("evals").join("cases")).unwrap();
+    let out = run(&dir, &["eval"]);
+    assert_eq!(out.code, 1);
+    assert!(
+        out.stderr.contains("brak dowodu") || out.stderr.contains("puste"),
+        "stderr: {}",
+        out.stderr
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// `--version` i `-V` musza wypisac wersje z Cargo.toml i skonczyc kodem 0,
 /// zamiast potraktowac flage jak tresc zadania (tak bylo do 2026-11-19).
 #[test]

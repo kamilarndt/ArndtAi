@@ -1,0 +1,5 @@
+{
+  "name": "zapis-i-odczyt",
+  "task": "write a.txt :: alfa; read a.txt",
+  "expect": {"a.txt": "alfa"}
+}

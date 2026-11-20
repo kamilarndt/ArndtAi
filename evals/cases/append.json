@@ -1,0 +1,5 @@
+{
+  "name": "append",
+  "task": "write a.txt :: raz; append a.txt :: dwa",
+  "expect": {"a.txt": "raz"}
+}

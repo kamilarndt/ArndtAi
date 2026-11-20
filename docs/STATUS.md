@@ -161,7 +161,14 @@ automatyczne stosowanie byłoby niebezpieczne, a propozycje są przeglądane rę
 | skille (04) | D01-D03, D05 | DONE |
 | pluginy (04) | D04 | POZA ZAKRESEM (ADR-004) |
 | proaktywność (06) | E01-E05 | DONE (`policies/`, `trigger_inbox`, `tick`, `tick --run`, cisza i budżet) |
-| self-improvement (06) | E06 | CZĘŚĆ: propozycje (`improve`); eval gate (E07) POZA ZAKRESEM |
-| eval gate (06) | E07 | POZA ZAKRESEM — bez niego auto-apply byłby niebezpieczny |
+| self-improvement (06) | E06 | DONE: `improve` + `--gate` (eval + rollback) |
+| eval gate (06) | E07 | DONE: `eval` (Pass^k) + rollback w `improve --gate` |
 | TUI (NEXT.md) | rundy 14-18 | DONE (bez voice/share/plugin/workflow/dashboard) |
 | web UI (09 Faza C) | F01-F11 | DONE: odczyt + sterowanie (`serve.py`), streaming przez tail |
+
+## Eval gate (2026-11-20)
+
+`ardntai eval [--k N]` — Pass^k na `evals/cases/*.json`, provider mock,
+czysty workspace na każde powtórzenie. `ardntai improve --gate` przepuszcza
+kandydata przez zestaw i robi auto-rollback z snapshotu `policies/`, gdy
+cokolwiek padnie; brak przypadków odrzuca zmianę.

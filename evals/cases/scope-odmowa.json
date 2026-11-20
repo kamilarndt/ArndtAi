@@ -1,0 +1,6 @@
+{
+  "name": "scope-odmowa",
+  "task": "../escape.txt :: x",
+  "expect": {},
+  "status": "DONE"
+}

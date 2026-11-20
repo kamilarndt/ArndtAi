@@ -5,7 +5,6 @@
 //! "myślenie" — to porządek, po którym `ultra` widzi, czego jest dużo,
 //! a czego brakuje. Pusty magazyn nie tworzy pliku.
 
-use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};

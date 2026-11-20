@@ -10,6 +10,7 @@ mod commands;
 mod consolidate;
 mod context;
 mod markdown;
+mod eval;
 mod improve;
 mod mcp;
 mod models;
@@ -127,6 +128,55 @@ fn run_cli() -> i32 {
             list_tools();
             0
         }
+        "eval" => {
+            let ws = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+            let mut k = 1usize;
+            let mut i = 1;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--k" => {
+                        k = args
+                            .get(i + 1)
+                            .and_then(|v| v.parse::<usize>().ok())
+                            .filter(|n| *n > 0 && *n <= 20)
+                            .unwrap_or(1);
+                        i += 2;
+                    }
+                    _ => i += 1,
+                }
+            }
+            let cases = match eval::load_cases(&ws) {
+                Ok(cases) => cases,
+                Err(error) => {
+                    eprintln!("{error}");
+                    return 1;
+                }
+            };
+            if cases.is_empty() {
+                eprintln!("evals/cases jest puste — brak dowodu, bramka nie przechodzi");
+                return 1;
+            }
+            let base = ws.join(".agent").join("eval");
+            let mut failed = 0;
+            for case in &cases {
+                let outcome = eval::run_case(&base, case, k);
+                let mark = if outcome.pass_k() { "PASS" } else { "FAIL" };
+                if !outcome.pass_k() {
+                    failed += 1;
+                }
+                println!(
+                    "  {mark:4} {:<24} pass^{k} = {}/{}",
+                    outcome.case, outcome.passes, outcome.runs
+                );
+            }
+            if failed > 0 {
+                eprintln!("eval: {failed} z {} przypadkow nie przeszlo", cases.len());
+                1
+            } else {
+                println!("eval: {}/{} przypadkow przeszlo (pass^{k})", cases.len(), cases.len());
+                0
+            }
+        }
         "improve" => {
             let ws = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
             let proposals = improve::propose(&ws);
@@ -137,6 +187,22 @@ fn run_cli() -> i32 {
             for proposal in &proposals {
                 println!("== {} [{}]", proposal.title, proposal.kind);
                 println!("{}", proposal.body);
+            }
+            if args.iter().skip(1).any(|a| a == "--gate") {
+                // Eval gate: kandydat wchodzi do policies/ tylko po Pass^k,
+                // inaczej snapshot wraca (auto-rollback).
+                for proposal in &proposals {
+                    let name = format!(
+                        "kandydat-{}",
+                        proposal.title.to_lowercase().replace(|c: char| !c.is_ascii_alphanumeric(), "-")
+                    );
+                    match eval::gate_policy(&ws, &name, &proposal.body, 1) {
+                        Ok(true) => println!("gate: {name} przeszl eval, zostaje w policies/"),
+                        Ok(false) => println!("gate: {name} oblal eval — wycofany"),
+                        Err(error) => eprintln!("gate: {error}"),
+                    }
+                }
+                return 0;
             }
             if args.iter().skip(1).any(|a| a == "--apply") {
                 match improve::apply(&ws, &proposals, context::now_ts()) {
@@ -370,7 +436,8 @@ fn usage() {
     println!("  arndtai tick [--run]                       — reguly proaktywne z policies/*.json");
     println!("  arndtai consolidate                        — graf pamieci z faktow i epizodow");
     println!("  arndtai ingest <plik> [--title \"...\"]      — second brain: kopia do .agent-memory/vault");
-    println!("  arndtai improve [--apply]                  — propozycje regul z powtarzalnych odmow");
+    println!("  arndtai improve [--apply [--gate]]         — propozycje regul (--gate: eval + rollback)");
+    println!("  arndtai eval [--k N]                       — eval gate: Pass^k na evals/cases");
     println!("  arndtai status [--memory lite|pro|ultra]  — stan workspace'u (sesje, mozg, outbox)");
     println!("  arndtai --screenshot plik.png [WxH]   — zrzut ekranu sesji (960x608 = 120x38)");
     println!("  arndtai --screenshot-welcome plik.png — zrzut ekranu powitalnego");

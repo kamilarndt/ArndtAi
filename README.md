@@ -106,13 +106,15 @@ Komendy pomocnicze: `mcp` (serwer MCP na stdin/stdout), `skills`, `status`,
 | `ardntai tick --run` | to samo + start zadania reguły w sesji `worker-*` |
 | `ardntai consolidate` | graf pamięci (`memory/graph.md`) z faktów i epizodów |
 | `ardntai ingest <plik>` | second brain: kopia do `.agent-memory/vault` + index |
-| `ardntai improve` | propozycje reguł z powtarzalnych odmów (`--apply` → `docs/proposals/`) |
+| `ardntai improve` | propozycje reguł z powtarzalnych odmów (`--apply` → `docs/proposals/`, `--gate` → eval + rollback) |
+| `ardntai eval [--k N]` | eval gate: Pass^k na `evals/cases/*.json` (provider mock) |
 | `ardntai tools` | lista narzędzi perimetru i ich argumentów |
 
 ## Czego nie ma (świadomie)
 
 - **Pluginów in-process** — ADR-004; perimetr to MCP.
-- **Eval gate** (Pass^k, canary, auto-rollback) — dlatego `improve` tylko proponuje.
+- **Canary/auto-rollback na produkcji** — jest Pass^k i rollback reguł w `improve --gate`,
+  nie ma stopniowego wdrażania na żywym ruchu (brak ruchu).
 - **Hosted CI** — ADR-005; bramką są hooki lokalne i `make ci`.
 - **Rozbiórek REA** HyAtlas/Hello Minds/SillyTavern/dsh — brak źródeł,
   `docs/re/README.md`.

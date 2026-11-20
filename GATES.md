@@ -256,3 +256,19 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   `apply_writes_proposals_and_never_touches_policies`). Na żywo w `/tmp/ws-improve`:
   3 sesje z `denied scope` → 1 propozycja, `--apply` → plik w `docs/proposals`,
   brak katalogu `policies`.
+
+- [x] G31: eval gate — Pass^k i auto-rollback reguł
+  CHECK: ./app/target/debug/ardntai eval && cd app && cargo test --quiet
+  EXPECT: `eval: 3/3 przypadkow przeszlo (pass^1)`; 264 unit + 29 integration
+  CWD: .
+  EVIDENCE: 2026-11-20 — `eval::load_cases` czyta `evals/cases/*.json` (task,
+  files, expect, status); `eval::run_case` uruchamia każdy przypadek N razy
+  w osobnym workspace z providerem `mock` i liczy Pass^k. `eval::gate_policy`
+  robi snapshot `policies/`, zapisuje kandydata, puszcza zestaw i przy
+  niepowodzeniu **przywraca snapshot** (auto-rollback); brak przypadków =
+  brak dowodu = zmiana odrzucona. `ardntai improve --gate` używa bramki.
+  Testy: `a_matching_case_passes_k_times`, `a_wrong_expectation_fails_and_is_visible`,
+  `a_candidate_policy_is_rolled_back_when_the_gate_fails`,
+  `without_cases_the_gate_refuses_the_change`, `eval_reports_pass_and_fail_with_exit_codes`,
+  `eval_without_cases_fails`. Na żywo: 3 przypadki PASS; `improve --gate`
+  z dobrym zestawem zostawia regułę, z psującym przypadkiem wycofuje.

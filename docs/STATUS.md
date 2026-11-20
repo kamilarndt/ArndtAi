@@ -156,7 +156,7 @@ automatyczne stosowanie byłoby niebezpieczne, a propozycje są przeglądane rę
 | pamięć Lite/Pro (02) | B02, B06 | DONE |
 | pamięć Ultra: konsolidacja (02) | B03 | DONE (`consolidate`) |
 | second brain + ingest (02, 00) | B05 | DONE (`vault`, `memory.ingest`) |
-| rozbiórki REA (02-06) | B07, C05, D06, E09 | BRAK — `docs/re/README.md` (brak źródeł) |
+| rozbiórki REA (02-06) | B07, C05, E09 | DONE: `docs/re/hyatlas-memory.md`, `character-cards.md`; dsh-superagent CZĘŚĆ (publiczny opis) |
 | osobowość jako plik (03) | C01-C04 | CZĘŚĆ: `personality/base.md` czytany; format karty (C03) POZA ZAKRESEM |
 | skille (04) | D01-D03, D05 | DONE |
 | pluginy (04) | D04 | POZA ZAKRESEM (ADR-004) |

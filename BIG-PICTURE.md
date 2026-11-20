@@ -46,5 +46,6 @@ z 14 listopada i jest tylko tak świeży, jak data obok niego._
 Dodane i dowiedzione (G27-G30): `consolidate` (graf pamięci), `ingest` +
 `memory.ingest` (second brain), `tick --run` (sesje `worker-*`, lock blokuje),
 `improve` (propozycje bez auto-apply). Decyzje: ADR-004 (pluginy poza zakresem),
-ADR-005 (CI lokalne). Bramka: 260 unit + 27 integration, demo 39/39,
-`make verify` OK.
+ADR-005 (CI lokalne). Doszło: eval gate Pass^k z auto-rollbackiem (G31),
+rozbiórki HyAtlas-Memory i Character Card V2 (`docs/re/`), demo 47 sprawdzeń.
+Bramka: 264 unit + 29 integration, `make verify` OK.

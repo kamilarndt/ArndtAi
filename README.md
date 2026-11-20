@@ -1,5 +1,7 @@
 # ArndtAi
 
+[![make verify](https://github.com/kamilarndt/ArndtAi/actions/workflows/verify.yml/badge.svg)](https://github.com/kamilarndt/ArndtAi/actions/workflows/verify.yml)
+
 Agent wykonawczy, który robi zadania na plikach w jednym katalogu roboczym:
 czyta, pisze, dopisuje, wysyła powiadomienie — i po crashu nie powtarza tego,
 co już zrobił. Dwa interfejsy: terminal (TUI) i przeglądarka (podgląd sesji).

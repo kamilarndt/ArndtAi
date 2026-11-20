@@ -358,17 +358,30 @@ fn transcript(dir: &Path) -> String {
 // `ARNDTAI_SELF`), a nie wywalic sie na `No such file or directory`.
 
 /// Uruchamia wskazana binarke (kopie), nie `bin_path()`.
+///
+/// `ETXTBSY` (Text file busy) zdarza sie, gdy kopia jest jeszcze otwarta do
+/// zapisu w innym watku testowym — ponawiamy chwile, zamiast robic test flaky.
 fn run_bin(bin: &Path, dir: &Path, args: &[&str]) -> Out {
-    let out = Command::new(bin)
-        .args(args)
-        .current_dir(dir)
-        .env_remove("ANTHROPIC_API_KEY")
-        .env_remove("OPENAI_API_KEY")
-        .env_remove("ARNDTAI_API_KEY")
-        .env_remove("ARNDTAI_BASE_URL")
-        .env_remove("ARNDTAI_SELF")
-        .output()
-        .expect("binarka arndtai powinna sie uruchomic");
+    let mut attempt = 0;
+    let out = loop {
+        match Command::new(bin)
+            .args(args)
+            .current_dir(dir)
+            .env_remove("ANTHROPIC_API_KEY")
+            .env_remove("OPENAI_API_KEY")
+            .env_remove("ARNDTAI_API_KEY")
+            .env_remove("ARNDTAI_BASE_URL")
+            .env_remove("ARNDTAI_SELF")
+            .output()
+        {
+            Ok(out) => break out,
+            Err(e) if e.raw_os_error() == Some(26) && attempt < 20 => {
+                attempt += 1;
+                std::thread::sleep(std::time::Duration::from_millis(25));
+            }
+            Err(e) => panic!("binarka arndtai powinna sie uruchomic: {e:?}"),
+        }
+    };
     Out {
         stdout: String::from_utf8_lossy(&out.stdout).to_string(),
         stderr: String::from_utf8_lossy(&out.stderr).to_string(),

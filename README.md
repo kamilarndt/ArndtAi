@@ -92,6 +92,31 @@ Flagi: `-w/--workspace`, `--provider mock|anthropic|openai`, `--steps N`,
 Komendy pomocnicze: `mcp` (serwer MCP na stdin/stdout), `skills`, `status`,
 `demo`.
 
+## Co działa
+
+| komenda | co robi |
+|---|---|
+| `ardntai run "<zadanie>"` | jedno zadanie: pętla, bramki, perimetr MCP |
+| `ardntai run --resume "<dopisek>"` | wznowienie ostatniej sesji (at-most-once) |
+| `ardntai tui` | terminalowy interfejs (historia, `/model`, `/skills`, `/export`) |
+| `ardntai demo` | 39 sprawdzeń na realnych artefaktach |
+| `ardntai status` | stan workspace: sesje, pamięć, outbox, model |
+| `ardntai skills` | osobowość, skille i poziom pamięci |
+| `ardntai tick` | reguły proaktywne z `policies/*.json` (default-deny) |
+| `ardntai tick --run` | to samo + start zadania reguły w sesji `worker-*` |
+| `ardntai consolidate` | graf pamięci (`memory/graph.md`) z faktów i epizodów |
+| `ardntai ingest <plik>` | second brain: kopia do `.agent-memory/vault` + index |
+| `ardntai improve` | propozycje reguł z powtarzalnych odmów (`--apply` → `docs/proposals/`) |
+| `ardntai tools` | lista narzędzi perimetru i ich argumentów |
+
+## Czego nie ma (świadomie)
+
+- **Pluginów in-process** — ADR-004; perimetr to MCP.
+- **Eval gate** (Pass^k, canary, auto-rollback) — dlatego `improve` tylko proponuje.
+- **Hosted CI** — ADR-005; bramką są hooki lokalne i `make ci`.
+- **Rozbiórek REA** HyAtlas/Hello Minds/SillyTavern/dsh — brak źródeł,
+  `docs/re/README.md`.
+
 ## Bramki
 
 Zadanie przechodzi, gdy: allowlista i budżet przepuszczają akcję, a po

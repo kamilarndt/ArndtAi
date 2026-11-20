@@ -15,7 +15,7 @@ innego agenta. Szczegóły: `docs/ARCHITECTURE.md`.
 
 ```
 app/                  # JEDYNE miejsce z kodem produkcyjnym
-  src/*.rs            # 10 modułów (5663 linie), w tym tui.rs
+  src/*.rs            # 25 modułów, m.in. tui.rs, proactive.rs, eval.rs
   tests/cli.rs        # testy integracyjne CLI
   Cargo.toml, Cargo.lock
 docs/                 # dokumenty zamrożone i opisowe
@@ -37,7 +37,7 @@ korzeń trzyma materiał i dokumenty, aplikacja żyje w `app/`.
 ```sh
 cd app
 cargo build                 # debug
-cargo test                  # 40 unit + 4 integration
+cargo test                  # 264 unit + 29 integration
 cargo run -- demo           # 47 sprawdzeń na realnych artefaktach
 cargo run -- tui            # tryb terminalowy (docs/TUI.md)
 cargo run -- -w /tmp/ws "write a.txt :: tresc; read a.txt"

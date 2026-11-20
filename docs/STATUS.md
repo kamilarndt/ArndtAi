@@ -79,3 +79,14 @@ Otwarte: web control (`POST /run`), pamięć Pro/Ultra, proaktywność.
 - UI: pole zadania + `Uruchom`/`Zatrzymaj`, status biegu, auto-wybór nowej sesji.
 - Bezpieczeństwo: bind 127.0.0.1, jedno zadanie naraz (409), treść zadania nie
   jest ścieżką. Rdzeń (`app/src/`) i `Cargo.toml` nietknięte.
+
+## Pamięć: co działa (2026-11-20)
+
+| poziom | czyta | pisze |
+|---|---|---|
+| lite | `memory/project.md`, FTS po transkryptach | nic |
+| pro | + `memory/facts.md`, `memory/episodes.md` | `.agent-memory/episodes.md` (wiersz na przebieg) |
+| ultra | + `memory/graph.md` | to samo co pro (konsolidacja grafu: brak) |
+
+Otwarte: ekstrakcja faktów i konsolidacja w tle wymagają wywołania modelu;
+`graph.md` jest czytany, ale nikt go nie generuje.

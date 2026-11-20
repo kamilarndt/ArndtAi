@@ -1281,6 +1281,72 @@ fn gate_stages_are_written_to_the_transcript() {
     let _ = std::fs::remove_dir_all(&gate_dir);
 }
 
+/// Poziom `pro`/`ultra` dopisuje epizod do `.agent-memory/episodes.md`:
+/// czas, status, kroki, narzedzia i tresc zadania. `lite` nie pisze nic
+/// (spec 02: Lite = tylko raw + search).
+#[test]
+fn pro_memory_records_an_episode_and_lite_does_not() {
+    let dir = temp_dir("episodes");
+    let (base, _) = fake_model(vec![
+        r#"{"thought":"pisze","tool":"fs.write","args":{"path":"a.txt","content":"x"}}"#
+            .to_string(),
+        r#"{"thought":"gotowe","finish":"a.txt zapisany"}"#.to_string(),
+    ]);
+    let out = run_env_within(
+        &dir,
+        &[
+            "run",
+            "zapis a.txt",
+            "-w",
+            dir.to_str().unwrap(),
+            "--provider",
+            "openai",
+            "--memory",
+            "pro",
+        ],
+        &[
+            ("ARNDTAI_API_KEY", "test-key"),
+            ("ARNDTAI_BASE_URL", base.as_str()),
+        ],
+        std::time::Duration::from_secs(30),
+    );
+    assert_eq!(out.code, 0, "stdout: {}\nstderr: {}", out.stdout, out.stderr);
+    let episodes = std::fs::read_to_string(dir.join(".agent-memory").join("episodes.md"))
+        .expect("pro ma zapisac epizod");
+    assert!(episodes.contains("zapis a.txt"), "epizod bez zadania: {episodes}");
+    assert!(episodes.contains("DONE"), "epizod bez statusu: {episodes}");
+
+    let lite_dir = temp_dir("episodes-lite");
+    let (lite_base, _) = fake_model(vec![
+        r#"{"thought":"gotowe","finish":"nic nie robilem"}"#.to_string(),
+    ]);
+    let lite = run_env_within(
+        &lite_dir,
+        &[
+            "run",
+            "nic",
+            "-w",
+            lite_dir.to_str().unwrap(),
+            "--provider",
+            "openai",
+            "--memory",
+            "lite",
+        ],
+        &[
+            ("ARNDTAI_API_KEY", "test-key"),
+            ("ARNDTAI_BASE_URL", lite_base.as_str()),
+        ],
+        std::time::Duration::from_secs(30),
+    );
+    assert_eq!(lite.code, 0, "stdout: {}", lite.stdout);
+    assert!(
+        !lite_dir.join(".agent-memory").join("episodes.md").exists(),
+        "lite nie moze pisac epizodow"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+    let _ = std::fs::remove_dir_all(&lite_dir);
+}
+
 /// `--version` i `-V` musza wypisac wersje z Cargo.toml i skonczyc kodem 0,
 /// zamiast potraktowac flage jak tresc zadania (tak bylo do 2026-11-19).
 #[test]

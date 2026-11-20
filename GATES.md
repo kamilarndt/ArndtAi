@@ -122,3 +122,17 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   CWD: app
   EVIDENCE: 2026-11-19 — `app/web/serve.py` (stdlib: http.server, subprocess), bind 127.0.0.1; `POST /api/run` uruchamia `ardntai run -w … --provider mock`, zwraca session id, `GET /api/status`, `POST /api/stop`, `GET /api/sessions`; `/.agent/sessions/<id>.jsonl` z Range (tail). Zmierzone: `POST {"task":"write a.txt :: z-web"}` → DONE, plik `a.txt`; drugi POST w trakcie → **409**; `POST {"task":"../../etc/passwd"}` → traktowane jako treść, brak odczytu plików; UI: formularz u góry, 6 sesji, 17 wierszy z 10 `GATE`, konsola bez wpisów; zrzut `app/shots/v0.3-web-run.png`. `app/Cargo.toml` bez nowych zależności.
   NOTE: bez serwera (samo `python3 -m http.server`) UI działa jak w v0.1: tylko odczyt, kontrolki wyłączone.
+
+- [x] G20: pamięć pro/ultra — epizody zapisywane i ładowane
+  CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
+  EXPECT: 242 unit + 23 integration, exit 0; demo 39/39
+  CWD: app
+  EVIDENCE: 2026-11-19/20 — `agent.rs::record_episode` dopisuje wiersz
+  `- <ts> · <status> · kroki N · narzędzia M · odmowy K · <zadanie>` do
+  `.agent-memory/episodes.md` przy `--memory pro|ultra`; test
+  `tests/cli.rs::pro_memory_records_an_episode_and_lite_does_not` (pro pisze,
+  lite nie). Na żywo w `/tmp/ws-mem2`: pierwszy przebieg → wpis, drugi → 2 wpisy,
+  `ardntai status --memory pro` pokazuje `Pamiec: .agent-memory/episodes.md`.
+  NOTE: ekstrakcja faktów (`facts.md`) i konsolidacja Ultra (`graph.md`) nadal
+  wymagają modelu — to osobna runda; dziś `ultra` czyta `memory/graph.md`, ale
+  nic go nie zapisuje.

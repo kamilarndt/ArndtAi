@@ -119,6 +119,8 @@ pub struct Report {
 struct Outcome {
     status: &'static str,
     reason: String,
+    /// Tresc zadania — trafia do epizodu pamieci `pro`/`ultra`.
+    task: String,
     steps: usize,
     tool_calls: usize,
     denied: usize,
@@ -201,6 +203,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
             &session,
             transport,
             Outcome {
+                task: task.to_string(),
                 status: "FAILED_ERROR",
                 reason: "brak .agent/resume — nie ma czego wznawiac".to_string(),
                 steps: 0,
@@ -302,6 +305,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
                     &session,
                     transport,
                     Outcome {
+                        task: task.to_string(),
                         status: "FAILED_ERROR",
                         reason,
                         steps: 0,
@@ -329,6 +333,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
     let outcome: Outcome = 'steps: loop {
         if steps >= cfg.max_steps {
             break 'steps Outcome {
+                task: task.to_string(),
                 status: "FAILED_BUDGET",
                 reason: format!("budzet krokow wyczerpany ({})", cfg.max_steps),
                 steps,
@@ -368,6 +373,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
                 emit(cfg, "FAILED_ERROR", &e);
                 session.event("error", json!({ "message": e.clone() }));
                 break 'steps Outcome {
+                    task: task.to_string(),
                     status: "FAILED_ERROR",
                     reason: e,
                     steps,
@@ -387,6 +393,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
             Action::Finish { summary } => {
                 emit(cfg, "DONE", &summary);
                 break 'steps Outcome {
+                    task: task.to_string(),
                     status: "DONE",
                     reason: summary,
                     steps,
@@ -446,6 +453,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
                     });
                     if streak >= 3 {
                         break 'steps Outcome {
+                            task: task.to_string(),
                             status: "FAILED_STALLED",
                             reason: format!("{} odmow z rzedu", streak),
                             steps,
@@ -662,6 +670,7 @@ pub fn run(task: &str, cfg: &Config) -> Report {
 
                 if streak >= 3 {
                     break 'steps Outcome {
+                        task: task.to_string(),
                         status: "FAILED_STALLED",
                         reason: format!("{} nieudanych krokow z rzedu", streak),
                         steps,
@@ -720,6 +729,36 @@ fn task_status(report_status: &str) -> &'static str {
     }
 }
 
+/// Jeden wiersz epizodu: czas, status, skala i tresc zadania.
+///
+/// To nie jest ekstrakcja faktow (ta wymaga modelu) — to surowy slad, po ktorym
+/// `pro`/`ultra` moga szukac wlasnej historii bez czytania calej sesji.
+fn record_episode(cfg: &Config, outcome: &Outcome) {
+    use std::io::Write;
+    let dir = cfg.workspace.join(".agent-memory");
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    let stamp = crate::context::now_ts();
+    let line = format!(
+        "- {} · {} · kroki {} · narzedzia {} · odmowy {} · {}\n",
+        stamp,
+        outcome.status,
+        outcome.steps,
+        outcome.tool_calls,
+        outcome.denied,
+        short(&outcome.task, 160),
+    );
+    let path = dir.join("episodes.md");
+    let fresh = !path.exists();
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+        if fresh {
+            let _ = f.write_all(b"# Epizody (poziom pro/ultra)\n\n");
+        }
+        let _ = f.write_all(line.as_bytes());
+    }
+}
+
 fn finish(cfg: &Config, session: &Session, transport: &str, outcome: Outcome) -> Report {
     session.event(
         "summary",
@@ -736,6 +775,11 @@ fn finish(cfg: &Config, session: &Session, transport: &str, outcome: Outcome) ->
     // Brak wiersza (np. przebieg bez store) nie jest bledem przebiegu.
     let store = Store::for_workspace(&cfg.workspace);
     let _ = store.set_task_status(&session.id, task_status(outcome.status));
+    // Poziom `pro`/`ultra` zostawia epizod w `.agent-memory/episodes.md`.
+    // Lite nie pisze (spec 02: tylko raw + search).
+    if matches!(cfg.memory, MemoryLevel::Pro | MemoryLevel::Ultra) {
+        record_episode(cfg, &outcome);
+    }
     if !cfg.quiet {
         println!();
         println!("Status: {}", outcome.status);

@@ -145,3 +145,23 @@ i proponuje regułę `policies/*.json`; `--apply` zapisuje propozycję do
 `docs/proposals/` i nie zmienia artefaktów. Eval gate (Pass^k, holdout, canary,
 auto-rollback) ze spełu 06 nie jest zbudowany — świadomie: bez niego
 automatyczne stosowanie byłoby niebezpieczne, a propozycje są przeglądane ręcznie.
+
+## Stan względem specu 00–09 (2026-11-20)
+
+| obszar | pozycje | stan |
+|---|---|---|
+| rdzeń, pętla, bramki (05) | A01-A12 | DONE |
+| magazyn, transkrypty, recovery (01) | A13-A20 | DONE |
+| perimetr MCP (01, 04) | B01, B04 | DONE |
+| pamięć Lite/Pro (02) | B02, B06 | DONE |
+| pamięć Ultra: konsolidacja (02) | B03 | DONE (`consolidate`) |
+| second brain + ingest (02, 00) | B05 | DONE (`vault`, `memory.ingest`) |
+| rozbiórki REA (02-06) | B07, C05, D06, E09 | BRAK — `docs/re/README.md` (brak źródeł) |
+| osobowość jako plik (03) | C01-C04 | CZĘŚĆ: `personality/base.md` czytany; format karty (C03) POZA ZAKRESEM |
+| skille (04) | D01-D03, D05 | DONE |
+| pluginy (04) | D04 | POZA ZAKRESEM (ADR-004) |
+| proaktywność (06) | E01-E05 | DONE (`policies/`, `trigger_inbox`, `tick`, `tick --run`, cisza i budżet) |
+| self-improvement (06) | E06 | CZĘŚĆ: propozycje (`improve`); eval gate (E07) POZA ZAKRESEM |
+| eval gate (06) | E07 | POZA ZAKRESEM — bez niego auto-apply byłby niebezpieczny |
+| TUI (NEXT.md) | rundy 14-18 | DONE (bez voice/share/plugin/workflow/dashboard) |
+| web UI (09 Faza C) | F01-F11 | DONE: odczyt + sterowanie (`serve.py`), streaming przez tail |

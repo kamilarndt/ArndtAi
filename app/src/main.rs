@@ -10,6 +10,7 @@ mod commands;
 mod consolidate;
 mod context;
 mod markdown;
+mod improve;
 mod mcp;
 mod models;
 mod proactive;
@@ -125,6 +126,35 @@ fn run_cli() -> i32 {
         "tools" => {
             list_tools();
             0
+        }
+        "improve" => {
+            let ws = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+            let proposals = improve::propose(&ws);
+            if proposals.is_empty() {
+                println!("brak propozycji (za malo powtarzalnych sygnalow)");
+                return 0;
+            }
+            for proposal in &proposals {
+                println!("== {} [{}]", proposal.title, proposal.kind);
+                println!("{}", proposal.body);
+            }
+            if args.iter().skip(1).any(|a| a == "--apply") {
+                match improve::apply(&ws, &proposals, context::now_ts()) {
+                    Ok(saved) => {
+                        for path in saved {
+                            println!("zapisane: {}", path.display());
+                        }
+                        0
+                    }
+                    Err(error) => {
+                        eprintln!("{error}");
+                        1
+                    }
+                }
+            } else {
+                println!("(podglad; --apply zapisze do docs/proposals, bez zmiany policies/)");
+                0
+            }
         }
         "ingest" => {
             let ws = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
@@ -340,6 +370,7 @@ fn usage() {
     println!("  arndtai tick [--run]                       — reguly proaktywne z policies/*.json");
     println!("  arndtai consolidate                        — graf pamieci z faktow i epizodow");
     println!("  arndtai ingest <plik> [--title \"...\"]      — second brain: kopia do .agent-memory/vault");
+    println!("  arndtai improve [--apply]                  — propozycje regul z powtarzalnych odmow");
     println!("  arndtai status [--memory lite|pro|ultra]  — stan workspace'u (sesje, mozg, outbox)");
     println!("  arndtai --screenshot plik.png [WxH]   — zrzut ekranu sesji (960x608 = 120x38)");
     println!("  arndtai --screenshot-welcome plik.png — zrzut ekranu powitalnego");

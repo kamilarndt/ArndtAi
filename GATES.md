@@ -244,3 +244,15 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   `.agent/run.lock` worker nie startuje i loguje „worker: zajete".
   Testy: `tick_run_without_action_starts_nothing`, `tick_run_respects_a_live_lock`,
   `tick_run_starts_a_worker_session_with_the_policy_prefix`.
+
+- [x] G30: self-improvement — propozycje bez auto-apply
+  CHECK: cd app && cargo test --quiet improve
+  EXPECT: 3 testy zielone; całość 260 + 27
+  CWD: app
+  EVIDENCE: 2026-11-20 — `improve::propose` liczy odmowy z transkryptów i
+  `trigger_inbox`; ≥3 tej samej odmowy daje propozycję reguły (`when: denied`,
+  `threshold: 3`, shadow 14 dni). `improve::apply` zapisuje tylko do
+  `docs/proposals/` i **nie tworzy** `policies/` (test
+  `apply_writes_proposals_and_never_touches_policies`). Na żywo w `/tmp/ws-improve`:
+  3 sesje z `denied scope` → 1 propozycja, `--apply` → plik w `docs/proposals`,
+  brak katalogu `policies`.

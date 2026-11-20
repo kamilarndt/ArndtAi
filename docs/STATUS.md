@@ -137,3 +137,11 @@ plik w kolejnych przebiegach (`context.rs:156-158`).
 `.agent-memory/vault/` z `index.md`; `ardntai ingest <plik> [--title ...]` oraz
 narzędzie `memory.ingest` kopiują tekst i dopisują wpis. Pusty na start,
 ingest tylko na jawne polecenie (spec 02). Źródło spoza workspace → `DENIED`.
+
+## Self-improvement (2026-11-20)
+
+`ardntai improve` liczy powtarzające się odmowy (transkrypty + `trigger_inbox`)
+i proponuje regułę `policies/*.json`; `--apply` zapisuje propozycję do
+`docs/proposals/` i nie zmienia artefaktów. Eval gate (Pass^k, holdout, canary,
+auto-rollback) ze spełu 06 nie jest zbudowany — świadomie: bez niego
+automatyczne stosowanie byłoby niebezpieczne, a propozycje są przeglądane ręcznie.

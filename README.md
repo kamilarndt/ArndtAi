@@ -1,6 +1,6 @@
 # ArndtAi
 
-[![make verify](https://github.com/kamilarndt/ArndtAi/actions/workflows/verify.yml/badge.svg)](https://github.com/kamilarndt/ArndtAi/actions/workflows/verify.yml)
+[![make verify](https://github.com/kamilarndt/ArndtAi/actions/workflows/verify.yml/badge.svg)](https://github.com/kamilarndt/ArndtAi/actions/workflows/verify.yml) [![release](https://img.shields.io/github/v/release/kamilarndt/ArndtAi)](https://github.com/kamilarndt/ArndtAi/releases/tag/v1.0.0)
 
 Agent wykonawczy, który robi zadania na plikach w jednym katalogu roboczym:
 czyta, pisze, dopisuje, wysyła powiadomienie — i po crashu nie powtarza tego,

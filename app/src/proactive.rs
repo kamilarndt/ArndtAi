@@ -30,6 +30,8 @@ pub struct Policy {
     pub quiet_hours: Option<(u64, u64)>,
     /// Górny limit notatek w oknie 24 h, licząc wszystkie reguły.
     pub max_per_day: u64,
+    /// Zadanie do uruchomienia w sesji `worker-<name>-*` (tylko `tick --run`).
+    pub action: Option<String>,
     pub note: String,
 }
 
@@ -102,6 +104,9 @@ pub fn load_policies(workspace: &Path) -> Vec<Policy> {
             shadow_days: num(&value, "shadow_days"),
             quiet_hours,
             max_per_day: num(&value, "max_per_day"),
+            action: text(&value, "action")
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty()),
             note: text(&value, "note").unwrap_or("").to_string(),
         });
     }
@@ -346,6 +351,60 @@ pub fn tick(workspace: &Path, now: u64) -> Vec<Hit> {
     hits
 }
 
+/// `tick --run`: po zapisaniu notatki uruchamia `action` w tle jako sesję
+/// roboczą. Równoległość pilnuje `run.lock` rdzenia — jeśli ktoś już pracuje
+/// w tym workspace, worker nie startuje (log „zajete"), a nie czeka w kolejce.
+pub fn tick_run(workspace: &Path, now: u64, binary: &Path) -> Vec<Hit> {
+    let hits = tick(workspace, now);
+    if hits.is_empty() {
+        return hits;
+    }
+    let policies = load_policies(workspace);
+    for hit in &hits {
+        if hit.shadow {
+            continue;
+        }
+        let Some(policy) = policies.iter().find(|p| p.name == hit.policy) else {
+            continue;
+        };
+        let Some(action) = policy.action.clone() else {
+            continue;
+        };
+        let lock = workspace.join(".agent").join("run.lock");
+        let busy = fs::read_to_string(&lock)
+            .ok()
+            .and_then(|raw| raw.trim().parse::<u32>().ok())
+            .map(|pid| Path::new(&format!("/proc/{pid}")).exists())
+            .unwrap_or(false);
+        if busy {
+            append_log(
+                workspace,
+                &json!({"at": now, "policy": hit.policy, "effect": "worker: zajete", "shadow": false}),
+            );
+            continue;
+        }
+        let spawned = std::process::Command::new(binary)
+            .args(["run", "-w"])
+            .arg(workspace)
+            .arg(&action)
+            .env("ARNDTAI_WORKER", &policy.name)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn();
+        match spawned {
+            Ok(child) => append_log(
+                workspace,
+                &json!({"at": now, "policy": hit.policy, "effect": format!("worker: start pid {}", child.id()), "shadow": false}),
+            ),
+            Err(error) => append_log(
+                workspace,
+                &json!({"at": now, "policy": hit.policy, "effect": format!("worker: blad {error}"), "shadow": false}),
+            ),
+        }
+    }
+    hits
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -469,6 +528,43 @@ mod tests {
         .unwrap();
         let hits = tick(&dir, 1000);
         assert_eq!(hits.len(), 1, "inbox ma byc sygnalem: {hits:?}");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn tick_run_without_action_starts_nothing() {
+        let dir = setup("run-brak");
+        write_session(&dir, "FAILED_ERROR", 0);
+        fs::write(
+            dir.join("policies").join("failed.json"),
+            r#"{"name":"failed","when":"session_failed","cooldown_hours":1,"note":"padlo"}"#,
+        )
+        .unwrap();
+        let before = fs::read_dir(dir.join(".agent").join("sessions")).unwrap().count();
+        let hits = tick_run(&dir, 1000, Path::new("/bin/true"));
+        assert_eq!(hits.len(), 1);
+        let after = fs::read_dir(dir.join(".agent").join("sessions")).unwrap().count();
+        assert_eq!(before, after, "bez action nie ma nowej sesji");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn tick_run_respects_a_live_lock() {
+        let dir = setup("run-lock");
+        write_session(&dir, "FAILED_ERROR", 0);
+        fs::write(
+            dir.join("policies").join("failed.json"),
+            r#"{"name":"failed","when":"session_failed","cooldown_hours":1,"action":"write a.txt :: worker","note":"padlo"}"#,
+        )
+        .unwrap();
+        fs::write(
+            dir.join(".agent").join("run.lock"),
+            format!("{}\n", std::process::id()),
+        )
+        .unwrap();
+        tick_run(&dir, 1000, Path::new("/bin/true"));
+        let log = fs::read_to_string(dir.join(".agent").join("policies.log")).unwrap();
+        assert!(log.contains("worker: zajete"), "log: {log}");
         let _ = fs::remove_dir_all(&dir);
     }
 

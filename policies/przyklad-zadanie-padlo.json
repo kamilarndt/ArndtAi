@@ -3,5 +3,6 @@
   "when": "session_failed",
   "cooldown_hours": 6,
   "shadow_days": 0,
-  "note": "Ostatnie zadanie nie doszlo do konca — sprawdz powod w transkrypcie"
+  "note": "Ostatnie zadanie nie doszlo do konca — sprawdz powod w transkrypcie",
+  "action": "read .agent/sessions -- nie; sprawdz ostatni transkrypt i zapisz wnioski do wnioski.md"
 }

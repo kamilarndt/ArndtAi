@@ -233,3 +233,14 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   `memory_ingest_refuses_a_path_outside_the_workspace`, `memory_ingest_copies_and_indexes`.
   Na żywo w `/tmp/ws-vault`: `ingest nota.md --title "Nota Kamila"` → index z wpisem;
   `ingest ../etc/passwd` → `DENIED`.
+
+- [x] G29: sesje robocze `worker-*` i `tick --run`
+  CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
+  EXPECT: 257 unit + 27 integration, exit 0; demo 39/39
+  CWD: app
+  EVIDENCE: 2026-11-20 — `Policy.action` (JSON) uruchamiany przez
+  `ardntai tick --run`: proces `run -w <ws> "<action>"` z `ARNDTAI_WORKER=<reguła>`,
+  a `context::Session::start` nadaje wtedy id `worker-<reguła>-<ts>`. Przy żywym
+  `.agent/run.lock` worker nie startuje i loguje „worker: zajete".
+  Testy: `tick_run_without_action_starts_nothing`, `tick_run_respects_a_live_lock`,
+  `tick_run_starts_a_worker_session_with_the_policy_prefix`.

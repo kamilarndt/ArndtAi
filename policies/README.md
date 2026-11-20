@@ -12,6 +12,7 @@ Reguły sprawdzane przez `ardntai tick` (bez modelu, bez sieci). Format JSON
 | `shadow_days` | >0: przez tyle dni reguła tylko loguje (shadow), potem działa |
 | `quiet_hours` | `[od, do]` w UTC; w tym oknie reguła tylko loguje „cisza” |
 | `max_per_day` | budżet uwagi: limit notatek w 24 h (globalny, bierze najniższy) |
+| `action` | treść zadania uruchamianego przez `ardntai tick --run` w sesji `worker-<name>-<ts>` |
 | `note` | tekst notatki; wykonanie dopisuje status, odmowy i ciszę |
 
 Efekt: wiersz w `.agent-memory/notes.md` i wpis w `.agent/run` → log

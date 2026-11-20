@@ -1464,6 +1464,52 @@ fn pro_memory_does_not_extract_facts_without_the_flag() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// `tick --run` uruchamia `action` jako sesję `worker-<reguła>-*` i nie czeka.
+#[test]
+fn tick_run_starts_a_worker_session_with_the_policy_prefix() {
+    let dir = temp_dir("worker");
+    let ws = dir.join("ws");
+    std::fs::create_dir_all(ws.join("policies")).unwrap();
+    std::fs::create_dir_all(ws.join(".agent").join("sessions")).unwrap();
+    // Sesja z porażką, żeby reguła `session_failed` miała wyzwalacz.
+    std::fs::write(
+        ws.join(".agent").join("sessions").join("100.jsonl"),
+        "{\"at\":100,\"kind\":\"summary\",\"data\":{\"status\":\"FAILED_ERROR\",\"denied\":0}}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        ws.join("policies").join("failed.json"),
+        r#"{"name":"failed","when":"session_failed","cooldown_hours":1,"action":"write w.txt :: worker","note":"padlo"}"#,
+    )
+    .unwrap();
+
+    let out = run(&ws, &["tick", "--run"]);
+    assert_eq!(out.code, 0, "stdout: {}\nstderr: {}", out.stdout, out.stderr);
+
+    let mut worker: Option<std::path::PathBuf> = None;
+    for _ in 0..100 {
+        if let Some(found) = std::fs::read_dir(ws.join(".agent").join("sessions"))
+            .unwrap()
+            .flatten()
+            .map(|e| e.path())
+            .find(|p| {
+                p.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n.starts_with("worker-failed-"))
+                    .unwrap_or(false)
+            })
+        {
+            worker = Some(found);
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let worker = worker.expect("ma powstac sesja worker-failed-*");
+    let raw = std::fs::read_to_string(&worker).unwrap();
+    assert!(raw.contains("worker"), "transkrypt: {raw}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// `--version` i `-V` musza wypisac wersje z Cargo.toml i skonczyc kodem 0,
 /// zamiast potraktowac flage jak tresc zadania (tak bylo do 2026-11-19).
 #[test]

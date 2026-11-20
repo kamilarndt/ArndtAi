@@ -192,7 +192,13 @@ fn run_cli() -> i32 {
         "tick" => {
             let ws = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
             let now = context::now_ts();
-            let hits = proactive::tick(&ws, now);
+            let run_actions = args.iter().skip(1).any(|a| a == "--run");
+            let hits = if run_actions {
+                let binary = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("ardntai"));
+                proactive::tick_run(&ws, now, &binary)
+            } else {
+                proactive::tick(&ws, now)
+            };
             for hit in &hits {
                 println!(
                     "{} {} — {}",

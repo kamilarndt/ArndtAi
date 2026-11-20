@@ -225,11 +225,19 @@ impl Session {
         let dir = workspace.join(".agent").join("sessions");
         let _ = fs::create_dir_all(&dir);
         let ts = now_ts();
-        let mut id = ts.to_string();
+        // Sesja robocza proaktywności ma prefiks `worker-<reguła>-` (spec 06);
+        // zwykłe sesje zostają przy samym znaczniku czasu.
+        let prefix = std::env::var("ARNDTAI_WORKER")
+            .ok()
+            .map(|w| w.trim().to_string())
+            .filter(|w| !w.is_empty())
+            .map(|w| format!("worker-{}-", w.replace(' ', "-")))
+            .unwrap_or_default();
+        let mut id = format!("{prefix}{ts}");
         let mut file = dir.join(format!("{}.jsonl", id));
         let mut n = 1;
         while file.exists() {
-            id = format!("{}-{}", ts, n);
+            id = format!("{prefix}{ts}-{n}");
             file = dir.join(format!("{}.jsonl", id));
             n += 1;
         }

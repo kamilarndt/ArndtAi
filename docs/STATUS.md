@@ -125,3 +125,9 @@ budżet uwagi i godziny ciszy, `trigger_inbox` po stronie perimetru.
   Błąd schematu nie zostawia śladu (świadomie — to błąd klienta).
 - TUI: `tick` na starcie; przy `DONE` na `--memory ultra` ekstrakcja faktów
   w tle.
+
+## Konsolidacja Ultra (2026-11-20)
+
+`ardntai consolidate` buduje `memory/graph.md` z faktów i epizodów (klastry
+tematyczne, bez modelu). Pusty magazyn nie tworzy pliku. `ultra` czyta ten
+plik w kolejnych przebiegach (`context.rs:156-158`).

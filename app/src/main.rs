@@ -7,6 +7,7 @@ mod agent;
 mod clipboard;
 mod clock;
 mod commands;
+mod consolidate;
 mod context;
 mod markdown;
 mod mcp;
@@ -123,6 +124,26 @@ fn run_cli() -> i32 {
         "tools" => {
             list_tools();
             0
+        }
+        "consolidate" => {
+            let ws = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+            match consolidate::consolidate(&ws, context::now_ts()) {
+                Ok(report) => {
+                    println!(
+                        "fakty {} · epizody {} · klastry {}",
+                        report.facts, report.episodes, report.clusters
+                    );
+                    match report.graph {
+                        Some(path) => println!("graf: {}", path.display()),
+                        None => println!("brak danych — nic nie zapisano"),
+                    }
+                    0
+                }
+                Err(error) => {
+                    eprintln!("{error}");
+                    1
+                }
+            }
         }
         "tick" => {
             let ws = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
@@ -266,7 +287,8 @@ fn usage() {
     println!("  arndtai mcp [--workspace FOLDER]   — serwer MCP po stdio (perimeter)");
     println!("  arndtai tools     — lista narzedzi perimeteru");
     println!("  arndtai skills [--memory lite|pro|ultra]  — osobowosc, skille i pamiec projektu");
-    println!("  arndtai tick                               — reguly proaktywne z policies/*.json");
+    println!("  arndtai tick [--run]                       — reguly proaktywne z policies/*.json");
+    println!("  arndtai consolidate                        — graf pamieci z faktow i epizodow");
     println!("  arndtai status [--memory lite|pro|ultra]  — stan workspace'u (sesje, mozg, outbox)");
     println!("  arndtai --screenshot plik.png [WxH]   — zrzut ekranu sesji (960x608 = 120x38)");
     println!("  arndtai --screenshot-welcome plik.png — zrzut ekranu powitalnego");

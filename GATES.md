@@ -208,3 +208,14 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   modelu), `finish_report` przy `DONE` i `--memory ultra` uruchamia w tle
   `extract_facts` + `append_facts`. Tryb mock nie woła sieci (extract zwraca
   pustkę), więc zrzut i testy TUI pozostają bez zmian.
+
+- [x] G27: konsolidacja Ultra (`ardntai consolidate`)
+  CHECK: cd app && cargo test --quiet consolidate
+  EXPECT: 2 testy zielone; całość 250 + 26
+  CWD: app
+  EVIDENCE: 2026-11-20 — `consolidate::consolidate` czyta `.agent-memory/facts.md`
+  i `episodes.md`, grupuje po temacie i zapisuje `memory/graph.md`
+  (`## <temat> (N)`, max 5 pozycji + „… i N więcej"). Pusty magazyn → zera
+  i brak pliku. Testy: `empty_workspace_writes_nothing`,
+  `facts_and_episodes_become_topic_clusters`. Na żywo w `/tmp/ws-mem2`:
+  `fakty 0 · epizody 2 · klastry 2`, graf z sekcjami tematycznymi.

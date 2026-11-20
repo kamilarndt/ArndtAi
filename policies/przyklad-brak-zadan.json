@@ -1,0 +1,10 @@
+{
+  "name": "przyklad-brak-zadan",
+  "when": "idle_hours",
+  "threshold": 48,
+  "cooldown_hours": 24,
+  "shadow_days": 14,
+  "quiet_hours": [22, 6],
+  "max_per_day": 2,
+  "note": "Brak zadan od dwoch dni — sprawdz, czy cos czeka"
+}

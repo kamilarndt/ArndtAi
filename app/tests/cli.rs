@@ -1386,6 +1386,84 @@ fn a_live_lock_blocks_a_second_run_and_a_stale_one_does_not() {
     let _ = std::fs::remove_dir_all(&lock_dir);
 }
 
+/// Fakty: `ultra` dopytuje model po zadaniu i zapisuje trwale fakty;
+/// `pro` bez `--facts` nie dopytuje (koszt), a powtorka nie duplikuje wiersza.
+#[test]
+fn ultra_memory_extracts_facts_and_does_not_duplicate_them() {
+    let dir = temp_dir("facts");
+    let (base, hits) = fake_model(vec![
+        r#"{"thought":"pisze","tool":"fs.write","args":{"path":"a.txt","content":"x"}}"#
+            .to_string(),
+        r#"{"thought":"gotowe","finish":"a.txt zapisany"}"#.to_string(),
+        r#"{"facts":["Kamil woli odpowiedzi po polsku.","Projekt ArndtAi trzyma kod w app/."]}"#
+            .to_string(),
+        r#"{"thought":"gotowe","finish":"a.txt zapisany"}"#.to_string(),
+        r#"{"facts":["Kamil woli odpowiedzi po polsku."]}"#.to_string(),
+    ]);
+    let envs = [
+        ("ARNDTAI_API_KEY", "test-key"),
+        ("ARNDTAI_BASE_URL", base.as_str()),
+    ];
+    for _ in 0..2 {
+        let out = run_env_within(
+            &dir,
+            &[
+                "run",
+                "zapis a.txt",
+                "-w",
+                dir.to_str().unwrap(),
+                "--provider",
+                "openai",
+                "--memory",
+                "ultra",
+            ],
+            &envs,
+            std::time::Duration::from_secs(30),
+        );
+        assert_eq!(out.code, 0, "stdout: {}\nstderr: {}", out.stdout, out.stderr);
+    }
+    let facts = std::fs::read_to_string(dir.join(".agent-memory").join("facts.md"))
+        .expect("ultra ma zapisac fakty");
+    let polsku = facts.matches("Kamil woli odpowiedzi po polsku.").count();
+    assert_eq!(polsku, 1, "duplikat faktu w pliku:\n{facts}");
+    assert!(facts.contains("ArndtAi trzyma kod w app/"), "brak drugiego faktu:\n{facts}");
+    assert!(hits.load(Ordering::SeqCst) >= 4, "model ma byc pytany o fakty");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `pro` bez `--facts` nie placi za ekstrakcje: model dostaje tylko zadanie.
+#[test]
+fn pro_memory_does_not_extract_facts_without_the_flag() {
+    let dir = temp_dir("facts-pro");
+    let (base, _) = fake_model(vec![
+        r#"{"thought":"gotowe","finish":"nic"}"#.to_string(),
+    ]);
+    let out = run_env_within(
+        &dir,
+        &[
+            "run",
+            "nic",
+            "-w",
+            dir.to_str().unwrap(),
+            "--provider",
+            "openai",
+            "--memory",
+            "pro",
+        ],
+        &[
+            ("ARNDTAI_API_KEY", "test-key"),
+            ("ARNDTAI_BASE_URL", base.as_str()),
+        ],
+        std::time::Duration::from_secs(30),
+    );
+    assert_eq!(out.code, 0, "stdout: {}", out.stdout);
+    assert!(
+        !dir.join(".agent-memory").join("facts.md").exists(),
+        "pro bez --facts nie moze pytac o fakty"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// `--version` i `-V` musza wypisac wersje z Cargo.toml i skonczyc kodem 0,
 /// zamiast potraktowac flage jak tresc zadania (tak bylo do 2026-11-19).
 #[test]

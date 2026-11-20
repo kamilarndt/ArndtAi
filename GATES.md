@@ -148,3 +148,18 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   (żywy lock → kod 2 i brak pliku; lock 999999999 → przebieg przechodzi,
   lock zdjęty). Ryzyko z konsultacji z Grokiem: perimetr i rdzeń dzielą tabelę
   `steps`, więc drugi writer musiałby psuć stan cicho — teraz jest głośna odmowa.
+
+- [x] G22: pamięć ultra — ekstrakcja faktów po zadaniu
+  CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
+  EXPECT: 242 unit + 26 integration, exit 0; demo 39/39
+  CWD: app
+  EVIDENCE: 2026-11-20 — `provider::extract_facts` robi osobne, nie-strumieniowe
+  wywołanie z prośbą o JSON `{"facts":[...]}` (max 3, filtr „przetrwa 30 dni”);
+  `main.rs::append_facts` dopisuje do `.agent-memory/facts.md` bez duplikatów.
+  Domyślnie tylko `--memory ultra`; `pro` wymaga `--facts`; offline/mock → pusto.
+  Testy: `ultra_memory_extracts_facts_and_does_not_duplicate_them` (2 przebiegi,
+  fakt zapisany raz, model pytany ≥4 razy), `pro_memory_does_not_extract_facts_without_the_flag`.
+  Na żywo (mimo-v2.6-flash): `--memory ultra` → facts.md z 2 faktami
+  („Użytkownik preferuje krótkie odpowiedzi po polsku.").
+  NOTE: ekstrakcja kosztuje jedno dodatkowe wywołanie modelu na zadanie;
+  TUI jeszcze jej nie woła (tylko CLI).

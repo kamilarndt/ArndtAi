@@ -85,7 +85,8 @@ cargo run -- -w /tmp/ws --resume        # wznowienie po przerwaniu
 ```
 
 Flagi: `-w/--workspace`, `--provider mock|anthropic|openai`, `--steps N`,
-`--memory lite|pro|ultra`, `--mcp|--no-mcp`, `--resume`, `-q`.
+`--memory lite|pro|ultra`, `--facts`/`--no-facts`, `--mcp|--no-mcp`,
+`--resume`, `-q`.
 Komendy pomocnicze: `mcp` (serwer MCP na stdin/stdout), `skills`, `status`,
 `demo`.
 

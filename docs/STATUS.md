@@ -97,3 +97,10 @@ Otwarte: ekstrakcja faktów i konsolidacja w tle wymagają wywołania modelu;
 `FAILED_LOCKED`, komunikat z pidem. Lock po crashu jest sprzątany przy
 następnym starcie. Dotyczy CLI, TUI i zadań uruchamianych z web UI
 (`serve.py` dodatkowo ma własne 409 dla dwóch żądań w jednym procesie).
+
+## Fakty (ultra) — 2026-11-20
+
+`--memory ultra` po zadanym `DONE` robi jedno dodatkowe, tanie wywołanie modelu
+i dopisuje do `.agent-memory/facts.md` maks. 3 trwałe fakty (bez duplikatów).
+`pro` wymaga `--facts`; `lite` i tryb offline nic nie robią. TUI jeszcze nie
+woła ekstrakcji — tylko CLI.

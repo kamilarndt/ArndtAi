@@ -328,6 +328,9 @@ fn run_task(args: &[String]) -> i32 {
     let mut use_mcp = true;
     let mut resume = false;
     let mut memory = context::MemoryLevel::Lite;
+    // Ekstrakcja faktow: domyslnie tylko `ultra`; `--facts` wlacza ja tez na `pro`.
+    let mut facts_flag = false;
+    let mut facts_set = false;
     let mut task_parts: Vec<String> = Vec::new();
 
     let mut i = 0;
@@ -365,6 +368,16 @@ fn run_task(args: &[String]) -> i32 {
                     eprintln!("--steps wymaga liczby");
                     return 2;
                 }
+            }
+            "--facts" => {
+                facts_flag = true;
+                facts_set = true;
+                i += 1;
+            }
+            "--no-facts" => {
+                facts_flag = false;
+                facts_set = true;
+                i += 1;
             }
             "--memory" => {
                 if let Some(v) = args.get(i + 1) {
@@ -424,6 +437,8 @@ fn run_task(args: &[String]) -> i32 {
     };
     let max_tokens = Some(settings.token_budget(model_limit));
 
+    let facts_provider = provider.clone();
+    let facts_workspace = workspace.clone();
     let cfg = agent::Config {
         workspace,
         max_steps,
@@ -439,11 +454,54 @@ fn run_task(args: &[String]) -> i32 {
         skill_context: Vec::new(),
     };
     let report = agent::run(&task, &cfg);
+    // Fakty po zadaniu: domyslnie na `ultra`, na `pro` tylko z `--facts`.
+    let want_facts = if facts_set {
+        facts_flag
+    } else {
+        matches!(memory, context::MemoryLevel::Ultra)
+    };
+    if want_facts && report.status == "DONE" {
+        if let Ok(facts) =
+            provider::extract_facts(facts_provider.as_deref(), &task, &report.reason)
+        {
+            append_facts(&facts_workspace, &facts);
+        }
+    }
     match report.status.as_str() {
         "DONE" => 0,
         // Osobny kod: "ktos inny pracuje na tym workspace" to nie blad zadania.
         "FAILED_LOCKED" => 2,
         _ => 1,
+    }
+}
+
+/// Dopisuje fakty do `.agent-memory/facts.md`, pomijajac duplikaty.
+/// Plik jest czytany przez pamiec `pro`/`ultra` w kolejnych przebiegach.
+fn append_facts(workspace: &Path, facts: &[String]) {
+    if facts.is_empty() {
+        return;
+    }
+    let dir = workspace.join(".agent-memory");
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    let path = dir.join("facts.md");
+    let existing = std::fs::read_to_string(&path).unwrap_or_default();
+    let mut out = existing.clone();
+    if existing.trim().is_empty() {
+        out.push_str("# Fakty (poziom pro/ultra)\n\n");
+    }
+    let mut added = 0;
+    for fact in facts {
+        let line = format!("- {}\n", fact.trim());
+        if out.contains(line.trim_end()) {
+            continue;
+        }
+        out.push_str(&line);
+        added += 1;
+    }
+    if added > 0 {
+        let _ = std::fs::write(&path, out);
     }
 }
 

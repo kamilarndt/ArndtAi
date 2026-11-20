@@ -738,6 +738,84 @@ impl RemoteBrain {
 }
 
 /// Nagłówki żądania. Wszystkie idą do pliku `--config` curl (0600), nie do argv.
+/// Ekstrakcja trwałych faktów po zakończonym zadaniu (pamięć pro/ultra).
+///
+/// Osobne, tanie wywołanie modelu — nie doklejamy tego do pętli, bo decyzja
+/// o narzędziu i streszczenie faktów to dwa różne zadania. Offline (mock)
+/// zwraca pustą listę: brak klucza nie może psuć przebiegu.
+pub fn extract_facts(
+    provider: Option<&str>,
+    task: &str,
+    summary: &str,
+) -> Result<Vec<String>, String> {
+    let allowed: Vec<String> = Vec::new();
+    let brain = Brain::from_env(provider, task, &allowed);
+    let remote = match brain {
+        Brain::Mock(_) => return Ok(Vec::new()),
+        Brain::Remote(r) => r,
+    };
+    let system = "Wypisujesz tylko trwale fakty. Nic nie robisz poza tym.";
+    let user = format!(
+        "Zadanie uzytkownika:\n{task}\n\nWynik:\n{summary}\n\n         Wypisz TYLKO trwale fakty o uzytkowniku lub projekcie (preferencje,          konwencje, ograniczenia), ktore beda prawdziwe za 30 dni. Pomin          procedury, jednorazowe szczegoly i to, co zrobiono dzisiaj.          Maksymalnie 3 fakty, kazdy 1-2 zdania.          Odpowiedz WYLACZNIE JSON-em: {{\"facts\":[\"...\"]}}."
+    );
+    let body = match remote.kind {
+        RemoteKind::Anthropic => json!({
+            "model": remote.model.clone(),
+            "max_tokens": 512,
+            "stream": false,
+            "system": system,
+            "messages": [{ "role": "user", "content": user }]
+        }),
+        RemoteKind::OpenAi => json!({
+            "model": remote.model.clone(),
+            "max_tokens": 512,
+            "stream": false,
+            "messages": [
+                { "role": "system", "content": system },
+                { "role": "user", "content": user }
+            ]
+        }),
+    };
+    let url = match remote.kind {
+        RemoteKind::Anthropic => format!("{}/v1/messages", remote.base_url.trim_end_matches('/')),
+        RemoteKind::OpenAi => format!(
+            "{}/chat/completions",
+            remote.base_url.trim_end_matches('/')
+        ),
+    };
+    let headers = request_headers(remote.kind, &remote.api_key, &remote.session);
+    let response = http_post(&url, &body.to_string(), &headers)?;
+    note_usage(&response);
+    let text = response_text(remote.kind, &response)
+        .ok_or_else(|| "odpowiedz bez tresci przy ekstrakcji faktow".to_string())?;
+    Ok(parse_facts(&text))
+}
+
+/// `{"facts":[...]}` albo, w razie czego, linie zaczynajace sie od `- `.
+fn parse_facts(text: &str) -> Vec<String> {
+    if let Some(start) = text.find('{') {
+        if let Some(end) = text.rfind('}') {
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(&text[start..=end]) {
+                if let Some(items) = value.get("facts").and_then(|v| v.as_array()) {
+                    return items
+                        .iter()
+                        .filter_map(|v| v.as_str())
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .take(3)
+                        .collect();
+                }
+            }
+        }
+    }
+    text.lines()
+        .map(|l| l.trim().trim_start_matches(['-', '*', '•']).trim())
+        .filter(|l| !l.is_empty() && !l.starts_with('{') && !l.starts_with('['))
+        .take(3)
+        .map(|l| l.to_string())
+        .collect()
+}
+
 fn request_headers(kind: RemoteKind, api_key: &str, session: &str) -> Vec<String> {
     match kind {
         RemoteKind::Anthropic => vec![

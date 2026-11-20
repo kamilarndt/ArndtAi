@@ -55,7 +55,8 @@ git config core.hooksPath scripts/hooks   # raz na klon: hook pre-commit = make 
 ```
 
 Hook `pre-commit` odrzuca commit, gdy `make verify` padnie (a `pre-push`
-sprawdza to samo przed wypchnięciem). Dowody `checks/*.log`,
+sprawdza to samo przed wypchnięciem). Repo jest publiczne, więc ten sam
+`make verify` biega też w GitHub Actions po każdym pushu. Dowody `checks/*.log`,
 `checks/evidence.json` i `craft.json` są **generowane przy każdym przebiegu**
 i nie idą do historii — powód: zawierają czasy, które zmieniają się bez zmiany
 kodu. W repo zostają zrzuty (`app/shots/`, `checks/**/*.png`) i dokumenty.

@@ -115,7 +115,6 @@ Komendy pomocnicze: `mcp` (serwer MCP na stdin/stdout), `skills`, `status`,
 - **Pluginów in-process** — ADR-004; perimetr to MCP.
 - **Canary/auto-rollback na produkcji** — jest Pass^k i rollback reguł w `improve --gate`,
   nie ma stopniowego wdrażania na żywym ruchu (brak ruchu).
-- **Hosted CI** — ADR-005; bramką są hooki lokalne i `make ci`.
 - **Rozbiórek REA** HyAtlas/Hello Minds/SillyTavern/dsh — brak źródeł,
   `docs/re/README.md`.
 
@@ -155,7 +154,7 @@ wykonaniu krok jest `done` w `.agent/state.db`. Odmowa kończy się wpisem
 ## CI
 
 `make verify` (build, testy, demo, dowody) uruchamia się w trzech miejscach:
-hook `pre-commit`, hook `pre-push` i — jeśli konto ma minuty — GitHub Actions
-(`.github/workflows/verify.yml`). Dziś Actions nie startuje na tym koncie
-(„recent account payments have failed or your spending limit needs to be
-increased"), więc bramką jest para hooków lokalnych plus `make ci`.
+hook `pre-commit`, hook `pre-push` i GitHub Actions
+(`.github/workflows/verify.yml`). Repo jest publiczne, więc minuty Actions są
+darmowe — pierwszy przebieg: `success`
+([44702648228](https://github.com/kamilarndt/ArndtAi/actions/runs/44702648228)).

@@ -115,3 +115,13 @@ w `.agent-memory/notes.md` (czytany przez pamięć `pro`/`ultra`).
 
 Otwarte ze specu 06: `worker-<task_id>` (sesja robocza), limit równoległości,
 budżet uwagi i godziny ciszy, `trigger_inbox` po stronie perimetru.
+
+## Runda proaktywna (2026-11-20)
+
+- `tick`: `quiet_hours` (UTC, okno przez północ) i globalny `max_per_day`
+  (budżet uwagi liczony z logu 24 h).
+- Perimetr pisze surowe odmowy (`scope`, `..`, `.agent`) do
+  `.agent/trigger_inbox.jsonl`; `tick` dolicza je do sygnału `denied`.
+  Błąd schematu nie zostawia śladu (świadomie — to błąd klienta).
+- TUI: `tick` na starcie; przy `DONE` na `--memory ultra` ekstrakcja faktów
+  w tle.

@@ -26,6 +26,10 @@ pub struct Policy {
     pub cooldown_hours: u64,
     /// 0 = działa od razu; >0 = tylko log przez tyle dni od `created`.
     pub shadow_days: u64,
+    /// Godziny ciszy (UTC): `[od, do]`, także przez północ (`[22, 6]`).
+    pub quiet_hours: Option<(u64, u64)>,
+    /// Górny limit notatek w oknie 24 h, licząc wszystkie reguły.
+    pub max_per_day: u64,
     pub note: String,
 }
 
@@ -82,12 +86,22 @@ pub fn load_policies(workspace: &Path) -> Vec<Policy> {
         let Some(when) = text(&value, "when") else {
             continue;
         };
+        let quiet_hours = value
+            .get("quiet_hours")
+            .and_then(|v| v.as_array())
+            .and_then(|a| {
+                let from = a.first()?.as_u64()?;
+                let to = a.get(1)?.as_u64()?;
+                Some((from.min(23), to.min(24)))
+            });
         out.push(Policy {
             name,
             when: when.to_string(),
             threshold: num(&value, "threshold"),
             cooldown_hours: num(&value, "cooldown_hours").max(1),
             shadow_days: num(&value, "shadow_days"),
+            quiet_hours,
+            max_per_day: num(&value, "max_per_day"),
             note: text(&value, "note").unwrap_or("").to_string(),
         });
     }
@@ -134,6 +148,17 @@ pub fn signals(workspace: &Path, now: u64) -> Signal {
             }
         }
     }
+    // Perimetr pisze surowe odmowy do `.agent/trigger_inbox.jsonl` (spec 06).
+    // To drugie zrodlo sygnalu: odmowa bramki nie zawsze trafia do summary.
+    if let Ok(raw) = fs::read_to_string(workspace.join(".agent").join("trigger_inbox.jsonl")) {
+        for line in raw.lines() {
+            if let Ok(ev) = serde_json::from_str::<Value>(line) {
+                if ev.get("kind").and_then(|v| v.as_str()) == Some("denied") {
+                    denied += 1;
+                }
+            }
+        }
+    }
     let idle_hours = if newest_mtime == 0 || newest_mtime > now {
         0
     } else {
@@ -164,6 +189,20 @@ fn read_log(workspace: &Path) -> Vec<Value> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// Czy `now` wpada w okno ciszy. Okno przechodzące przez północ (`22 → 6`)
+/// jest sumą dwóch przedziałów, nie pustym zbiorem.
+fn in_quiet_hours(now: u64, from: u64, to: u64) -> bool {
+    let hour = (now % 86_400) / 3600;
+    if from == to {
+        return false;
+    }
+    if from < to {
+        hour >= from && hour < to
+    } else {
+        hour >= from || hour < to
+    }
 }
 
 fn append_log(workspace: &Path, entry: &Value) {
@@ -198,6 +237,29 @@ pub fn tick(workspace: &Path, now: u64) -> Vec<Hit> {
     let log = read_log(workspace);
     let mut hits = Vec::new();
 
+    // Budżet uwagi jest globalny: najniższy `max_per_day` wśród reguł wyznacza
+    // limit notatek w oknie 24 h, licząc też to, co wyjdzie w tym przebiegu.
+    let budget = policies
+        .iter()
+        .filter(|p| p.max_per_day > 0)
+        .map(|p| p.max_per_day)
+        .min()
+        .unwrap_or(0);
+    let recent_notes = log
+        .iter()
+        .filter(|entry| {
+            let at = entry.get("at").and_then(|v| v.as_u64()).unwrap_or(0);
+            entry.get("shadow").and_then(|v| v.as_bool()) != Some(true)
+                && entry
+                    .get("effect")
+                    .and_then(|v| v.as_str())
+                    .map(|e| !e.starts_with("brak") && !e.starts_with("cisza") && !e.starts_with("budzet"))
+                    .unwrap_or(false)
+                && now.saturating_sub(at) < 86_400
+        })
+        .count() as u64;
+    let mut written = 0u64;
+
     if policies.is_empty() {
         append_log(
             workspace,
@@ -218,6 +280,25 @@ pub fn tick(workspace: &Path, now: u64) -> Vec<Hit> {
             same && fired && now.saturating_sub(at) < cooldown
         });
         if recent {
+            continue;
+        }
+
+        // Godziny ciszy: reguła nie wychodzi, ale zostawia ślad, że wyzwalacz był.
+        if let Some((from, to)) = policy.quiet_hours {
+            if in_quiet_hours(now, from, to) {
+                append_log(
+                    workspace,
+                    &json!({"at": now, "policy": policy.name, "effect": "cisza — wstrzymane", "shadow": false}),
+                );
+                continue;
+            }
+        }
+
+        if budget > 0 && recent_notes + written >= budget {
+            append_log(
+                workspace,
+                &json!({"at": now, "policy": policy.name, "effect": "budzet uwagi — wstrzymane", "shadow": false}),
+            );
             continue;
         }
 
@@ -243,6 +324,7 @@ pub fn tick(workspace: &Path, now: u64) -> Vec<Hit> {
             );
         } else {
             append_note(workspace, &policy.name, &ripple);
+            written += 1;
             append_log(
                 workspace,
                 &json!({"at": now, "policy": policy.name, "effect": ripple, "shadow": false}),
@@ -320,6 +402,73 @@ mod tests {
 
         let later = tick(&dir, 1000 + 7 * 3600);
         assert_eq!(later.len(), 1, "po cooldownie regula dziala znow");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn quiet_hours_suppress_the_note_and_leave_a_log_entry() {
+        let dir = setup("cisza");
+        write_session(&dir, "FAILED_ERROR", 0);
+        // 23:00 UTC wchodzi w okno 22-6.
+        let now = 23 * 3600;
+        fs::write(
+            dir.join("policies").join("failed.json"),
+            r#"{"name":"failed","when":"session_failed","cooldown_hours":1,"quiet_hours":[22,6],"note":"padlo"}"#,
+        )
+        .unwrap();
+        // Sesja musi byc "swieza", inaczej idle liczy sie inaczej — tu nieistotne.
+        let hits = tick(&dir, now);
+        assert!(hits.is_empty(), "w godzinach ciszy nic nie wychodzi: {hits:?}");
+        assert!(!dir.join(".agent-memory").join("notes.md").exists());
+        let log = fs::read_to_string(dir.join(".agent").join("policies.log")).unwrap();
+        assert!(log.contains("cisza"), "log ma mowic o ciszy: {log}");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn attention_budget_caps_notes_per_day_across_policies() {
+        let dir = setup("budzet");
+        write_session(&dir, "FAILED_ERROR", 3);
+        fs::write(
+            dir.join("policies").join("a.json"),
+            r#"{"name":"a","when":"session_failed","cooldown_hours":1,"max_per_day":1,"note":"pierwsza"}"#,
+        )
+        .unwrap();
+        fs::write(
+            dir.join("policies").join("b.json"),
+            r#"{"name":"b","when":"denied","threshold":1,"cooldown_hours":1,"max_per_day":1,"note":"druga"}"#,
+        )
+        .unwrap();
+        let hits = tick(&dir, 1000);
+        assert_eq!(hits.len(), 1, "budzet uwagi: jedna notatka na okno: {hits:?}");
+        let notes = fs::read_to_string(dir.join(".agent-memory").join("notes.md")).unwrap();
+        assert_eq!(notes.matches("- [").count(), 1, "notatki: {notes}");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn trigger_inbox_from_the_perimeter_feeds_the_denied_signal() {
+        let dir = setup("inbox");
+        // Transkrypt bez odmow, ale perimetr zapisal dwie surowe odmowy.
+        let line = json!({"at": 100, "kind": "summary", "data": {"status": "DONE", "denied": 0}});
+        fs::write(
+            dir.join(".agent").join("sessions").join("s1.jsonl"),
+            format!("{line}\n"),
+        )
+        .unwrap();
+        fs::write(
+            dir.join(".agent").join("trigger_inbox.jsonl"),
+            "{\"at\":10,\"kind\":\"denied\",\"tool\":\"fs.write\",\"reason\":\"scope\"}\n\
+             {\"at\":11,\"kind\":\"denied\",\"tool\":\"fs.read\",\"reason\":\"scope\"}\n",
+        )
+        .unwrap();
+        fs::write(
+            dir.join("policies").join("denied.json"),
+            r#"{"name":"denied","when":"denied","threshold":2,"cooldown_hours":1,"note":"dwie odmowy"}"#,
+        )
+        .unwrap();
+        let hits = tick(&dir, 1000);
+        assert_eq!(hits.len(), 1, "inbox ma byc sygnalem: {hits:?}");
         let _ = fs::remove_dir_all(&dir);
     }
 

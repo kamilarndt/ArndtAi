@@ -204,6 +204,7 @@ pub fn resolve(workspace: &Path, rel: &str) -> Result<PathBuf, ToolResult> {
             Component::Normal(name) => {
                 normals += 1;
                 if name == ".agent" {
+                    log_trigger(workspace, "denied", "path", "scope");
                     return Err(ToolResult::error(
                         "DENIED",
                         "katalog .agent jest zarezerwowany dla rdzenia",
@@ -212,12 +213,14 @@ pub fn resolve(workspace: &Path, rel: &str) -> Result<PathBuf, ToolResult> {
             }
             Component::CurDir => {}
             Component::ParentDir => {
+                log_trigger(workspace, "denied", "path", "scope");
                 return Err(ToolResult::error(
                     "DENIED",
                     "sciezka zawiera '..'",
                 ))
             }
             Component::RootDir | Component::Prefix(_) => {
+                log_trigger(workspace, "denied", "path", "scope");
                 return Err(ToolResult::error(
                     "DENIED",
                     "sciezka bezwzgledna jest zabroniona",
@@ -227,6 +230,7 @@ pub fn resolve(workspace: &Path, rel: &str) -> Result<PathBuf, ToolResult> {
     }
     // W1: "." albo sciezka degenerujaca sie do katalogu workspace to nie plik.
     if normals == 0 {
+        log_trigger(workspace, "denied", "path", "scope");
         return Err(ToolResult::error(
             "DENIED",
             "sciezka musi wskazywac plik w workspace, nie sam katalog",
@@ -243,6 +247,7 @@ pub fn resolve(workspace: &Path, rel: &str) -> Result<PathBuf, ToolResult> {
                     let target = match fs::canonicalize(&walk) {
                         Ok(t) => t,
                         Err(e) => {
+                            log_trigger(workspace, "denied", "path", "scope");
                             return Err(ToolResult::error(
                                 "DENIED",
                                 format!("nie mozna rozwiazac symlinku {}: {}", walk.display(), e),
@@ -456,13 +461,41 @@ fn content_arg<'a>(args: &'a Value) -> Result<&'a str, ToolResult> {
     Ok(content)
 }
 
+/// Surowe zdarzenie do `trigger_inbox` (spec 06: pisze je perimetr, nie model).
+/// `tick` czyta ten plik jako dodatkowy sygnał — bez niego odmowy bramek
+/// widać tylko w transkrypcie, a proaktywność nie ma z czego czytać.
+fn log_trigger(workspace: &Path, kind: &str, tool: &str, reason: &str) {
+    use std::io::Write;
+    let dir = workspace.join(".agent");
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    let line = serde_json::json!({
+        "at": crate::context::now_ts(),
+        "kind": kind,
+        "tool": tool,
+        "reason": reason,
+    });
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(dir.join("trigger_inbox.jsonl"))
+    {
+        let _ = writeln!(f, "{line}");
+    }
+}
+
 pub fn call(name: &str, args: &Value, workspace: &Path) -> ToolResult {
     let schema = match input_schema(name) {
         Some(s) => s,
-        None => return ToolResult::error("DENIED", format!("nieznane narzedzie: {}", name)),
+        None => {
+            return ToolResult::error("DENIED", format!("nieznane narzedzie: {}", name))
+        }
     };
     // Faza B, pkt 5: argumenty sprawdzone względem schematu z tools/list, zanim cokolwiek
     // dotknie dysku. Ten sam walidator obsługuje MCP i pętlę agenta.
+    // Błąd schematu to błąd klienta, nie zdarzenie proaktywne: nie zostawiamy
+    // po nim śladu na dysku (test `oversized_channel_is_schema_error`).
     if let Err(why) = crate::schema::validate(&schema, args) {
         return ToolResult::error("SCHEMA_ERROR", why);
     }

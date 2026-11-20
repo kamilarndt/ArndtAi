@@ -869,6 +869,11 @@ impl App {
         } else {
             Vec::new()
         };
+        // Proaktywność: jeden przebieg reguł na start (bez modelu, bez sieci).
+        // Trafienia (także shadow) lądują w `.agent/policies.log`, a notatki
+        // w `.agent-memory/notes.md` — TUI ich nie rysuje, żeby nie mylić ich
+        // z rozmową; widzi je `ardntai tick` i pamięć kolejnych zadań.
+        let _ = crate::proactive::tick(&opts.workspace, crate::context::now_ts());
         let startup_warnings = settings.warnings.clone();
         // Runda 16: skille odkryte raz na start; `/skills` odświeża listę.
         let skills = crate::skills::discover(&opts.workspace);
@@ -1194,6 +1199,22 @@ impl App {
             if let Some(id) = self.session.clone() {
                 let session = context::Session::resume(&self.workspace, &id);
                 session.event("note", serde_json::json!({ "model": model }));
+            }
+        }
+        // Pamięć `ultra`: po udanym zadaniu jedno tanie wywołanie modelu na
+        // fakty (w tle, żeby nie blokować UI). Offline nic nie robi.
+        if report.status == "DONE" && matches!(self.memory, crate::context::MemoryLevel::Ultra) {
+            if let Some(task) = self.last_task.clone() {
+                let workspace = self.workspace.clone();
+                let provider = self.provider.clone();
+                let reason = report.reason.clone();
+                std::thread::spawn(move || {
+                    if let Ok(facts) =
+                        crate::provider::extract_facts(provider.as_deref(), &task, &reason)
+                    {
+                        crate::append_facts(&workspace, &facts);
+                    }
+                });
             }
         }
         self.rx = None;

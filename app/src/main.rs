@@ -496,7 +496,7 @@ fn run_task(args: &[String]) -> i32 {
 
 /// Dopisuje fakty do `.agent-memory/facts.md`, pomijajac duplikaty.
 /// Plik jest czytany przez pamiec `pro`/`ultra` w kolejnych przebiegach.
-fn append_facts(workspace: &Path, facts: &[String]) {
+pub(crate) fn append_facts(workspace: &Path, facts: &[String]) {
     if facts.is_empty() {
         return;
     }

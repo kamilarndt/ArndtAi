@@ -178,3 +178,33 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   z `status=FAILED_BUDGET`, drugi `tick` → „brak trafien" (cooldown 6 h).
   NOTE: format JSON zamiast YAML (spec 06) — YAML wymagałby nowej zależności;
   brak `worker-<task_id>`, limitu równoległości i godzin ciszy — to kolejny krok.
+
+- [x] G24: cisza i budżet uwagi w `tick` (spec 06)
+  CHECK: cd app && cargo test --quiet proactive
+  EXPECT: 6 testów proaktywnych zielonych; całość 248 + 26
+  CWD: app
+  EVIDENCE: 2026-11-20 — `quiet_hours: [od, do]` (UTC, okno przez północ)
+  wstrzymuje notatkę i zostawia wpis „cisza — wstrzymane”; `max_per_day` jest
+  budżetem globalnym (najniższa wartość wśród reguł), liczonym z logu 24 h
+  i z bieżącego przebiegu. Testy: `quiet_hours_suppress_the_note_and_leave_a_log_entry`,
+  `attention_budget_caps_notes_per_day_across_policies`.
+
+- [x] G25: trigger_inbox pisany przez perimetr
+  CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
+  EXPECT: 248 unit + 26 integration, exit 0; demo 39/39
+  CWD: app
+  EVIDENCE: 2026-11-20 — `tools::call`/`tools::resolve` zapisują surowe odmowy
+  do `.agent/trigger_inbox.jsonl` (`kind: denied`, `tool`, `reason`); błąd
+  schematu świadomie nic nie zapisuje (test `oversized_channel_is_schema_error`
+  pilnuje, że po odrzuceniu nie ma śladu). `proactive::signals` dolicza te
+  zdarzenia do sygnału `denied`. Test: `trigger_inbox_from_the_perimeter_feeds_the_denied_signal`.
+  Na żywo: `write ../escape.txt` → jeden wpis w inboxie.
+
+- [x] G26: TUI uruchamia reguły i ekstrakcję faktów
+  CHECK: cd app && cargo run --quiet -- --screenshot /tmp/tui.png
+  EXPECT: exit 0, niepusty PNG 960×608
+  CWD: app
+  EVIDENCE: 2026-11-20 — `App::new` woła `proactive::tick` raz na start (bez
+  modelu), `finish_report` przy `DONE` i `--memory ultra` uruchamia w tle
+  `extract_facts` + `append_facts`. Tryb mock nie woła sieci (extract zwraca
+  pustkę), więc zrzut i testy TUI pozostają bez zmian.

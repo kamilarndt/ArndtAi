@@ -10,6 +10,8 @@ Reguły sprawdzane przez `ardntai tick` (bez modelu, bez sieci). Format JSON
 | `threshold` | dla `denied`: minimalna liczba; dla `idle_hours`: godziny |
 | `cooldown_hours` | ten sam wyzwalacz nie powtórzy się w tym oknie |
 | `shadow_days` | >0: przez tyle dni reguła tylko loguje (shadow), potem działa |
+| `quiet_hours` | `[od, do]` w UTC; w tym oknie reguła tylko loguje „cisza” |
+| `max_per_day` | budżet uwagi: limit notatek w 24 h (globalny, bierze najniższy) |
 | `note` | tekst notatki; wykonanie dopisuje status, odmowy i ciszę |
 
 Efekt: wiersz w `.agent-memory/notes.md` i wpis w `.agent/run` → log

@@ -6515,7 +6515,10 @@ mod tests {
         assert!(text.contains("ctrl+r"));
         assert!(text.contains("Changelog"));
         assert!(text.contains("always-approve"), "tryb z konfiguracji: {text}");
-        assert!(text.contains("ArndtAi 0.1.0"), "wersja z Cargo: {text}");
+        assert!(
+            text.contains(concat!("ArndtAi ", env!("CARGO_PKG_VERSION"))),
+            "wersja z Cargo: {text}"
+        );
         assert!(text.contains('\u{256D}'), "zaokraglona ramka composera: {text}");
 
         app.on_key(KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL));

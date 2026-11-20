@@ -144,6 +144,58 @@ pub(crate) fn render_skill_context(skills: &[(String, String)]) -> String {
     out
 }
 
+/// Jeden przebieg na workspace. Plik `.agent/run.lock` trzyma pid; żywy pid
+/// blokuje drugi przebieg (dwa writery na jednej sesji to cicha korupcja
+/// stanu), a pid po crashu jest sprzatany przy nastepnym starcie.
+pub struct WorkspaceLock {
+    path: PathBuf,
+    ours: bool,
+}
+
+impl WorkspaceLock {
+    pub fn acquire(workspace: &Path) -> Result<WorkspaceLock, String> {
+        let dir = workspace.join(".agent");
+        std::fs::create_dir_all(&dir).map_err(|e| format!("brak .agent: {e}"))?;
+        let path = dir.join("run.lock");
+        for _ in 0..2 {
+            match std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&path)
+            {
+                Ok(mut f) => {
+                    use std::io::Write;
+                    let _ = write!(f, "{}\n", std::process::id());
+                    return Ok(WorkspaceLock { path, ours: true });
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                    let holder = std::fs::read_to_string(&path).unwrap_or_default();
+                    let pid: Option<u32> = holder.trim().parse().ok();
+                    let alive = pid.map(|p| Path::new(&format!("/proc/{p}")).exists()).unwrap_or(false);
+                    if alive && pid != Some(std::process::id()) {
+                        return Err(format!(
+                            "workspace zajety przez pid {} (plik .agent/run.lock)",
+                            pid.unwrap_or(0)
+                        ));
+                    }
+                    // Smieciowy lock po crashu: usuwamy i probujemy raz jeszcze.
+                    let _ = std::fs::remove_file(&path);
+                }
+                Err(e) => return Err(format!("nie moge zalozyc .agent/run.lock: {e}")),
+            }
+        }
+        Err("nie moge zalozyc .agent/run.lock".to_string())
+    }
+}
+
+impl Drop for WorkspaceLock {
+    fn drop(&mut self) {
+        if self.ours {
+            let _ = std::fs::remove_file(&self.path);
+        }
+    }
+}
+
 fn emit(cfg: &Config, stage: &str, detail: &str) {
     if !cfg.quiet {
         println!("  [{}] {}", stage, detail);
@@ -172,6 +224,24 @@ fn short(text: &str, limit: usize) -> String {
 }
 
 pub fn run(task: &str, cfg: &Config) -> Report {
+    let _lock = match WorkspaceLock::acquire(&cfg.workspace) {
+        Ok(lock) => lock,
+        Err(message) => {
+            if !cfg.quiet {
+                eprintln!("{message}");
+                eprintln!("Poczekaj, az poprzednie zadanie skonczy, albo usun plik recznie.");
+            }
+            return Report {
+                status: "FAILED_LOCKED".to_string(),
+                steps: 0,
+                tool_calls: 0,
+                denied: 0,
+                drift: 0,
+                reason: message,
+                session: cfg.workspace.join(".agent").join("run.lock"),
+            };
+        }
+    };
     let prefix = Prefix::load(&cfg.workspace, cfg.memory);
     let mut rendered = prefix.render();
     // Runda 16: treść skilli wczytanych `/skill` — tylko one, nigdy cała lista.

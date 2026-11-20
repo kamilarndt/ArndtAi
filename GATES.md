@@ -136,3 +136,15 @@ Scope: naprawa S1/S2 z `audyty/arndtai-2026-11-13.md` (F1-F8, F16, F20-F22, F12)
   NOTE: ekstrakcja faktów (`facts.md`) i konsolidacja Ultra (`graph.md`) nadal
   wymagają modelu — to osobna runda; dziś `ultra` czyta `memory/graph.md`, ale
   nic go nie zapisuje.
+
+- [x] G21: jeden przebieg na workspace (lock pliku)
+  CHECK: cd app && cargo test --quiet && cargo run --quiet -- demo
+  EXPECT: 242 unit + 24 integration, exit 0; demo 39/39
+  CWD: app
+  EVIDENCE: 2026-11-20 — `agent::WorkspaceLock` trzyma `.agent/run.lock` z pidem;
+  żywy pid blokuje drugi przebieg (exit 2, `FAILED_LOCKED`, komunikat
+  „workspace zajety przez pid N"), pid po crashu jest usuwany przy następnym
+  starcie. Test `tests/cli.rs::a_live_lock_blocks_a_second_run_and_a_stale_one_does_not`
+  (żywy lock → kod 2 i brak pliku; lock 999999999 → przebieg przechodzi,
+  lock zdjęty). Ryzyko z konsultacji z Grokiem: perimetr i rdzeń dzielą tabelę
+  `steps`, więc drugi writer musiałby psuć stan cicho — teraz jest głośna odmowa.

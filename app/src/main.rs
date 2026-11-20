@@ -439,10 +439,11 @@ fn run_task(args: &[String]) -> i32 {
         skill_context: Vec::new(),
     };
     let report = agent::run(&task, &cfg);
-    if report.status == "DONE" {
-        0
-    } else {
-        1
+    match report.status.as_str() {
+        "DONE" => 0,
+        // Osobny kod: "ktos inny pracuje na tym workspace" to nie blad zadania.
+        "FAILED_LOCKED" => 2,
+        _ => 1,
     }
 }
 

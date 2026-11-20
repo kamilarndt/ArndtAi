@@ -1347,6 +1347,32 @@ fn pro_memory_records_an_episode_and_lite_does_not() {
     let _ = std::fs::remove_dir_all(&lite_dir);
 }
 
+/// Dwa writery na jednym workspace to cicha korupcja stanu (audyt ryzyka):
+/// drugi przebieg musi odmowic, a smieciowy lock po crashu nie moze blokowac
+/// na zawsze.
+#[test]
+fn a_live_lock_blocks_a_second_run_and_a_stale_one_does_not() {
+    let lock_dir = temp_dir("lock");
+    let agent_dir = lock_dir.join(".agent");
+    std::fs::create_dir_all(&agent_dir).unwrap();
+    let lock = agent_dir.join("run.lock");
+    let me = std::process::id();
+    std::fs::write(&lock, format!("{me}\n")).unwrap();
+
+    let busy = run(&lock_dir, &["run", "write a.txt :: x", "-w", lock_dir.to_str().unwrap()]);
+    assert_eq!(busy.code, 2, "stdout: {}\nstderr: {}", busy.stdout, busy.stderr);
+    let text = format!("{}{}", busy.stdout, busy.stderr);
+    assert!(text.contains("zajet") || text.contains("zajęt"), "brak komunikatu o locku: {text}");
+    assert!(!lock_dir.join("a.txt").exists(), "zablokowany przebieg nie moze pisac");
+
+    std::fs::write(&lock, "999999999\n").unwrap();
+    let ok = run(&lock_dir, &["run", "write a.txt :: x", "-w", lock_dir.to_str().unwrap()]);
+    assert_eq!(ok.code, 0, "stdout: {}\nstderr: {}", ok.stdout, ok.stderr);
+    assert!(lock_dir.join("a.txt").exists(), "po smieciowym locku zadanie ma przejsc");
+    assert!(!lock.exists(), "lock musi byc zdjety po przebiegu");
+    let _ = std::fs::remove_dir_all(&lock_dir);
+}
+
 /// `--version` i `-V` musza wypisac wersje z Cargo.toml i skonczyc kodem 0,
 /// zamiast potraktowac flage jak tresc zadania (tak bylo do 2026-11-19).
 #[test]

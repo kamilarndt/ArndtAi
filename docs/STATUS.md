@@ -90,3 +90,10 @@ Otwarte: web control (`POST /run`), pamięć Pro/Ultra, proaktywność.
 
 Otwarte: ekstrakcja faktów i konsolidacja w tle wymagają wywołania modelu;
 `graph.md` jest czytany, ale nikt go nie generuje.
+
+## Jeden writer na workspace (2026-11-20)
+
+`.agent/run.lock` (pid) blokuje drugi przebieg: kod wyjścia 2, status
+`FAILED_LOCKED`, komunikat z pidem. Lock po crashu jest sprzątany przy
+następnym starcie. Dotyczy CLI, TUI i zadań uruchamianych z web UI
+(`serve.py` dodatkowo ma własne 409 dla dwóch żądań w jednym procesie).
